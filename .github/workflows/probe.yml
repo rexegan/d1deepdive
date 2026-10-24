@@ -9,20 +9,14 @@ jobs:
       - run: |
           set +e
           S=https://site.api.espn.com/apis/site/v2/sports
-          V=https://site.api.espn.com/apis/v2/sports
-          C=https://sports.core.api.espn.com/v2/sports
-          for p in basketball/mens-college-basketball basketball/womens-college-basketball; do
-            echo "=== $p conf"; curl -s "$V/$p/standings" | jq -c '[.children[] | [.id, .abbreviation, .name]]'
-            echo "=== $p sb groups=8 (SEC?)"; curl -s "$S/$p/scoreboard?groups=8&dates=20260214" | jq -c '[.events[].competitions[0].competitors[].team.conferenceId] | unique'
-          done
           for p in baseball/college-baseball baseball/college-softball; do
-            sp=${p%%/*}; lg=${p##*/}
-            echo "=== $p conferenceIds"; curl -s "$S/$p/scoreboard?dates=20260418&limit=1000" | jq -c '[.events[].competitions[0].competitors[].team.conferenceId] | unique, (.events|length)'
-            echo "=== $p groups=50"; curl -s "$S/$p/scoreboard?dates=20260418&limit=1000&groups=50" | jq -c '(.events|length)'
-            echo "=== $p core groups"; curl -s "$C/$sp/leagues/$lg/seasons/2026/types/2/groups/50/children?limit=100" | jq -c '.count, [.items[]."$ref"] | .[0:3]?'
-            echo "=== $p core groups2"; curl -s "$C/$sp/leagues/$lg/groups?limit=100" | jq -c '.count, .items[0:2]'
-            echo "=== $p standings group=8"; curl -s "$V/$p/standings?group=8" | jq -c '{name, n: (.children|length), e: (.standings.entries|length), c0: .children[0].name}'
-            echo "=== $p standings level"; curl -s "$V/$p/standings?level=3" | jq -c '{n: (.children|length), names: [.children[]?.name][0:40]}'
-            echo "=== $p rankings"; curl -s "$S/$p/rankings" | head -c 300; echo
+            echo "=== $p raw"; curl -s "$S/$p/scoreboard?dates=20260418" | head -c 200; echo
+            echo "=== $p conf ids"; curl -s "$S/$p/scoreboard?dates=20260418" | jq -c '(.events|length), ([.events[]?.competitions[0].competitors[].team.conferenceId] | unique)'
+            for g in 50 8 23 2 7 26; do echo "groups=$g"; curl -s "$S/$p/scoreboard?dates=20260418&groups=$g" | jq -c '(.events|length)'; done
+            echo "=== $p team sched"; curl -s "$S/$p/teams/239/schedule" | jq -c '.team.groups, .team.standingSummary, (.events|length)'
+            echo "=== $p team stats"; curl -s -o /dev/null -w "%{http_code}\n" "$S/$p/teams/239/statistics"
+            echo "=== $p standings sample"; curl -s "https://site.api.espn.com/apis/v2/sports/$p/standings" | jq -c '.children[0].standings.entries[0:3][] | {t: .team.displayName, id: .team.id}'
           done
-          echo "=== core mbb children"; curl -s "$C/basketball/leagues/mens-college-basketball/seasons/2026/types/2/groups/50/children?limit=100" | jq -c '.count'
+          echo "=== mbb pac12 21"; curl -s "$S/basketball/mens-college-basketball/scoreboard?dates=20260214&groups=21" | jq -c '(.events|length)'
+          echo "=== mbb rankings names"; curl -s "$S/basketball/mens-college-basketball/rankings" | jq -c '[.rankings[].name]'
+          echo "=== mbb team sched groups"; curl -s "$S/basketball/mens-college-basketball/teams/239/schedule" | jq -c '.team.groups, .team.standingSummary'
