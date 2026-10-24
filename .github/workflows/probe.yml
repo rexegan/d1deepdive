@@ -1,0 +1,27 @@
+name: Probe ESPN endpoints
+on:
+  push:
+    branches: [probe-roster]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set +e
+          S=https://site.api.espn.com/apis/site/v2/sports
+          W=https://site.web.api.espn.com/apis/common/v3/sports
+          C=https://sports.core.api.espn.com/v2/sports
+          hdr() { echo "=== $1"; curl -s -o /tmp/b -D /tmp/h -H "Origin: https://rexegan.github.io" "$1"; head -1 /tmp/h; grep -i "access-control-allow-origin" /tmp/h || echo "NO CORS"; }
+          for p in football/college-football basketball/mens-college-basketball basketball/womens-college-basketball baseball/college-baseball baseball/college-softball; do hdr "$S/$p/teams/239/roster"; jq -c '{keys: keys, a: (.athletes|length), first: (.athletes[0] | if type=="object" and has("items") then {position, n: (.items|length), item: (.items[0] | {id, fullName, jersey, position: .position.abbreviation, headshot, height: .displayHeight, weight: .displayWeight, experience, birthPlace})} else {id, fullName, jersey, position: .position?.abbreviation, headshot, displayHeight, displayWeight, experience, birthPlace} end)}' /tmp/b | head -c 900; echo; done
+          A=$(curl -s "$S/football/college-football/teams/239/roster" | jq -r '[.athletes[]?.items[]?.id][0]')
+          echo "athlete $A"
+          hdr "$W/football/college-football/athletes/$A"; jq -c '.athlete | keys' /tmp/b | head -c 900; echo
+          hdr "$W/football/college-football/athletes/$A/overview"; jq -c 'keys, (.statistics|keys?), (.statistics.labels?), (.statistics.splits?[0])' /tmp/b | head -c 1200; echo
+          hdr "$W/football/college-football/athletes/$A/stats"; jq -c 'keys, (.categories?[0] | {name, displayName, labels, names, statistics: .statistics?[0]})' /tmp/b | head -c 1500; echo
+          hdr "$W/football/college-football/athletes/$A/gamelog"; jq -c 'keys' /tmp/b | head -c 300; echo
+          hdr "$S/football/college-football/athletes/$A"; head -c 200 /tmp/b; echo
+          hdr "$C/football/leagues/college-football/athletes/$A"; jq -c 'keys' /tmp/b | head -c 600; echo
+          echo "=== athlete detail"; curl -s "$W/football/college-football/athletes/$A" | jq -c '.athlete | {displayName, position: .position.displayName, jersey, displayHeight, displayWeight, displayExperience: .displayExperience, birthPlace, displayBirthPlace, headshot, team: .team.displayName, statsSummary}' | head -c 1500
+          B=$(curl -s "$S/basketball/mens-college-basketball/teams/239/roster" | jq -r '.athletes[0].id')
+          hdr "$W/basketball/mens-college-basketball/athletes/$B/overview"; jq -c 'keys' /tmp/b | head -c 300; echo
+          hdr "$W/basketball/mens-college-basketball/athletes/$B"; jq -c '.athlete.statsSummary' /tmp/b | head -c 600; echo
