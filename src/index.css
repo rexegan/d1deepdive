@@ -260,6 +260,23 @@ select,
   max-width: 260px;
 }
 
+.league-bar .search {
+  margin-left: auto;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.status-bar .updated {
+  margin-bottom: 0;
+}
+
 .date-nav {
   display: flex;
   align-items: center;

@@ -23,7 +23,10 @@ function dayLabel(key) {
 
 export default function Scoreboard({ sport, params }) {
   const date = params.date ?? todayKey()
-  const division = params.div ?? sport.divisions[0]?.id
+  // Sports with a league picker use ?g=<group>; 'top25' is FBS filtered to ranked teams.
+  const league = sport.leagues ? (params.g ?? 'top25') : null
+  const top25Only = league === 'top25'
+  const division = league ? (top25Only ? '80' : league) : (params.div ?? sport.divisions[0]?.id)
   const { week, st } = params
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -49,7 +52,7 @@ export default function Scoreboard({ sport, params }) {
     const q = query.trim().toLowerCase()
     return data.events.filter((g) => {
       const teams = [g.home, g.away].filter(Boolean)
-      if (filter === 'top25' && !teams.some((t) => t.rank)) return false
+      if ((top25Only || filter === 'top25') && !teams.some((t) => t.rank)) return false
       if (filter === 'mine' && !teams.some((t) => isFav(sport.id, t.id))) return false
       if (filter === 'live' && g.state !== 'in') return false
       if (q && !teams.some((t) => `${t.name} ${t.fullName} ${t.abbr}`.toLowerCase().includes(q)))
@@ -58,7 +61,7 @@ export default function Scoreboard({ sport, params }) {
     })
     // favList is read so the list re-filters when a team is followed
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, filter, query, favList.length, sport.id])
+  }, [data, filter, query, favList.length, sport.id, top25Only])
 
   const sections = [
     { id: 'in', title: 'Live', games: games.filter((g) => g.state === 'in') },
@@ -70,10 +73,30 @@ export default function Scoreboard({ sport, params }) {
     (w) => String(w.week) === String(week ?? data?.week) && String(w.seasonType) === String(st ?? data?.seasonType),
   )
 
+  const filterSeg = (
+    <div className="seg small">
+      {FILTERS.filter((f) => !(sport.leagues && f.id === 'top25')).map((f) => (
+        <button key={f.id} className={f.id === filter ? 'on' : ''} onClick={() => setFilter(f.id)}>
+          {f.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  const searchBox = (
+    <input
+      className="search"
+      type="search"
+      placeholder="Find a team"
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+    />
+  )
+
   return (
     <section>
       <div className="toolbar">
-        {sport.divisions.length > 1 && (
+        {!sport.leagues && sport.divisions.length > 1 && (
           <div className="seg">
             {sport.divisions.map((d) => (
               <button
@@ -137,24 +160,48 @@ export default function Scoreboard({ sport, params }) {
         )}
       </div>
 
-      <div className="toolbar">
-        <div className="seg small">
-          {FILTERS.map((f) => (
-            <button key={f.id} className={f.id === filter ? 'on' : ''} onClick={() => setFilter(f.id)}>
-              {f.label}
-            </button>
-          ))}
+      {sport.leagues ? (
+        <div className="toolbar league-bar">
+          <div className="seg">
+            {sport.quickLeagues.map((id) => (
+              <button key={id} className={id === league ? 'on' : ''} onClick={() => go({ g: id, week: null, st: null })}>
+                {sport.leagues.find((l) => l.id === id).label}
+              </button>
+            ))}
+          </div>
+          <select aria-label="League" value={league} onChange={(e) => go({ g: e.target.value, week: null, st: null })}>
+            {[...new Set(sport.leagues.map((l) => l.section))].map((section) => {
+              const items = sport.leagues.filter((l) => l.section === section)
+              return section ? (
+                <optgroup key={section} label={section}>
+                  {items.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                items.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))
+              )
+            })}
+          </select>
+          {searchBox}
         </div>
-        <input
-          className="search"
-          type="search"
-          placeholder="Find a team"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
+      ) : (
+        <div className="toolbar">
+          {filterSeg}
+          {searchBox}
+        </div>
+      )}
 
-      <Updated updated={updated} polling={polling} onRefresh={refresh} />
+      <div className="status-bar">
+        <Updated updated={updated} polling={polling} onRefresh={refresh} />
+        {sport.leagues && filterSeg}
+      </div>
 
       {loading && <Loading label="Loading games…" />}
       {error && !data && <ErrorBox error={error} onRetry={refresh} />}
