@@ -9,8 +9,8 @@ import MyTeamsEditor from './components/MyTeamsEditor.jsx'
 
 const VIEWS = [
   { id: 'scores', label: 'Scores' },
-  { id: 'rankings', label: 'Rankings' },
-  { id: 'standings', label: 'Standings' },
+  { id: 'rankings', label: 'Rankings', over: 'National' },
+  { id: 'standings', label: 'Standings', over: 'Conference' },
 ]
 
 export default function App() {
@@ -51,7 +51,14 @@ export default function App() {
               <nav className="tabs" aria-label="Views">
                 {VIEWS.map((v) => (
                   <a key={v.id} href={buildHash(sport.id, v.id, { g: route.params.g })} className={v.id === view ? 'on' : ''}>
-                    {v.label}
+                    {v.over ? (
+                      <span className="two-line">
+                        <small>{v.over}</small>
+                        {v.label}
+                      </span>
+                    ) : (
+                      v.label
+                    )}
                   </a>
                 ))}
               </nav>
