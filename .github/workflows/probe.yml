@@ -7,15 +7,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          B=https://site.api.espn.com/apis/site/v2/sports/football/college-football
-          for u in "$B/scoreboard" "$B/teams/333" "$B/teams/333/schedule" "$B/teams/333/statistics" "$B/teams?limit=1000&groups=80" "$B/rankings" "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80" "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/333" "https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/teams/333/statistics" "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/333/schedule"; do
-            echo "=== $u"
-            curl -s -o /tmp/body -D - -H "Origin: https://rexegan.github.io" "$u" | grep -iE "^HTTP|access-control|location|content-type"
-            head -c 300 /tmp/body; echo
+          S=https://site.api.espn.com/apis/site/v2/sports
+          V=https://site.api.espn.com/apis/v2/sports
+          echo "=== schedule team"; curl -s "$S/football/college-football/teams/333/schedule" | jq -c '.team'
+          echo "=== cfb record-ish stats"; curl -s "$V/football/college-football/standings?group=80" | jq -c '[.children[0].standings.entries[0].stats[] | select(.displayValue|test("^[0-9]+-[0-9]+")) | {name, type, displayValue}]'
+          for p in basketball/mens-college-basketball basketball/womens-college-basketball baseball/college-baseball baseball/college-softball; do
+            echo "=== $p standings"; curl -s -D /tmp/h "$V/$p/standings" | jq -c '{n: (.children|length), first: .children[0].name, entries: (.children[0].standings.entries|length), kids: (.children[0].children|length), rec: [.children[0].standings.entries[0].stats[]? | select(.displayValue|test("^[0-9]+-[0-9]+")) | {name, type, displayValue}]}' | head -c 700; grep -i access-control-allow-origin /tmp/h
+            echo "=== $p rankings"; curl -s "$S/$p/rankings" | jq -c '[.rankings[].name]'
+            echo "=== $p scoreboard groups=50"; curl -s "$S/$p/scoreboard?groups=50&dates=20260301" | jq -c '(.events|length)'
+            echo "=== $p scoreboard nogroups"; curl -s "$S/$p/scoreboard?dates=20260301&limit=1000" | jq -c '(.events|length)'
           done
-          echo "=== team keys"; curl -s "$B/teams/333" | jq -c '.team | keys, .record.items[0], .nextEvent[0].id' | head -c 1500; echo
-          echo "=== schedule sample"; curl -s "$B/teams/333/schedule" | jq -c '.events[0].competitions[0].competitors[0] | {id, homeAway, winner, score, team: .team.id}' | head -c 800; echo
-          echo "=== stats shape"; curl -s "$B/teams/333/statistics" | jq -c 'keys, (.results|keys?), (.results.stats.categories[0] | {name, displayName, s: .stats[0]})' | head -c 1500; echo
-          echo "=== standings shape"; curl -s "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80" | jq -c '.children[0] | {id, name, abbreviation, n: (.standings.entries|length), stats: [.standings.entries[0].stats[] | {name, type, displayValue}]}' | head -c 2500; echo
-          echo "=== rankings names"; curl -s "$B/rankings" | jq -c '[.rankings[].name]'
-          echo "=== bball scoreboard groups"; curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/scoreboard" | jq -c '.leagues[0].name, (.events|length)'
+          echo "=== cfb fcs standings"; curl -s "$V/football/college-football/standings?group=81" | jq -c '[.children[] | {id, name, abbreviation}]'
+          echo "=== cfb fbs ids"; curl -s "$V/football/college-football/standings?group=80" | jq -c '[.children[] | {id, name, abbreviation}]'
+          echo "=== d2"; curl -s "$V/football/college-football/standings?group=35" | jq -c '(.children|length)'
+          echo "=== d2 scoreboard"; curl -s "$S/football/college-football/scoreboard?groups=35" | jq -c '(.events|length)'
