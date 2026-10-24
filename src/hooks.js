@@ -58,7 +58,12 @@ export function useData(load, deps, { pollMs = 30_000, shouldPoll } = {}) {
     return () => clearInterval(id)
   }, [polling, pollMs, run])
 
-  return { ...state, polling, refresh: () => run(true) }
+  const retry = () => {
+    setState((s) => ({ ...s, error: null, loading: !s.data }))
+    run(true)
+  }
+
+  return { ...state, polling, refresh: retry }
 }
 
 // ---------- favorite teams, kept in this browser ----------

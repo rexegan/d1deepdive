@@ -26,7 +26,9 @@ function AddTeams({ sport }) {
           return (
             <li key={t.id}>
               <TeamLogo src={t.logo} size={22} />
-              <span className="ed-name">{t.fullName}</span>
+              <span className="ed-name">
+                {t.fullName ?? t.name} <span className="muted">· {t.conference}</span>
+              </span>
               <button className={`btn ${fav ? '' : 'primary'}`} onClick={() => toggle(sport.id, t)}>
                 {fav ? 'Following' : '+ Add'}
               </button>

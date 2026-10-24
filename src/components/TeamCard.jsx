@@ -54,10 +54,11 @@ function Body({ sport, open }) {
         <TeamLogo src={team.logo} size={56} />
         <div className="tc-title">
           <h2>
-            {team.rank && <span className="rank">#{team.rank}</span>} {team.name}
+            {team.rank && <span className="rank">#{team.rank.rank}</span>} {team.name}
           </h2>
           <p className="muted">
             {sport.name}
+            {team.rank ? ` · #${team.rank.rank} ${team.rank.poll}` : ''}
             {team.standing ? ` · ${team.standing}` : ''}
           </p>
         </div>

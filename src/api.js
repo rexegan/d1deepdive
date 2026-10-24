@@ -434,38 +434,60 @@ function normalizeStatCategories(raw) {
     .filter((c) => c.stats.length)
 }
 
+function recordFrom(games) {
+  const w = games.filter((g) => g.result === 'W').length
+  const l = games.filter((g) => g.result === 'L').length
+  const t = games.filter((g) => g.result === 'T').length
+  return games.length ? `${w}-${l}${t ? `-${t}` : ''}` : null
+}
+
+// ESPN's /teams/{id} endpoint doesn't send CORS headers, so browsers can't
+// read it. The card is built from /schedule and /statistics (which do) plus
+// the rankings feed.
 export async function fetchTeam(sport, id) {
   const base = `${SITE}/${sport.path}/teams/${id}`
-  const [info, schedule, stats] = await Promise.allSettled([
-    getJSON(base),
+  const [schedule, stats, polls] = await Promise.allSettled([
     getJSON(`${base}/schedule`),
     getJSON(`${base}/statistics`),
+    fetchRankings(sport),
   ])
-  if (info.status === 'rejected') throw info.reason
-  const t = info.value.team ?? {}
-  const recordItems = (t.record?.items ?? []).map((r) => ({
-    type: r.type,
-    label: (r.description ?? r.type).replace(/ record$/i, ''),
-    summary: r.summary,
-    stats: Object.fromEntries((r.stats ?? []).map((s) => [s.name, s.value])),
-  }))
-  const games =
-    schedule.status === 'fulfilled'
-      ? (schedule.value.events ?? []).map((e) => normalizeScheduleEvent(e, t.id ?? id))
-      : []
+  if (schedule.status === 'rejected') throw schedule.reason
+  const t = schedule.value.team ?? stats.value?.team ?? {}
+  const games = (schedule.value.events ?? []).map((e) => normalizeScheduleEvent(e, t.id ?? id))
+  const done = games.filter((g) => g.result)
+
+  const records = [
+    { type: 'total', label: 'Record', summary: t.recordSummary || recordFrom(done) },
+    { type: 'conf', label: 'Conference', summary: recordFrom(done.filter((g) => g.conferenceGame)) },
+    { type: 'home', label: 'Home', summary: recordFrom(done.filter((g) => g.home && !g.neutral)) },
+    { type: 'away', label: 'Away', summary: recordFrom(done.filter((g) => !g.home && !g.neutral)) },
+    { type: 'neutral', label: 'Neutral', summary: recordFrom(done.filter((g) => g.neutral)) },
+  ].filter((r) => r.summary)
+
+  let rank = null
+  if (polls.status === 'fulfilled') {
+    for (const poll of polls.value) {
+      const hit = poll.ranks.find((r) => String(r.team.id) === String(t.id ?? id))
+      if (hit) {
+        rank = { rank: hit.rank, poll: poll.short }
+        break
+      }
+    }
+  }
+
   return {
     id: t.id ?? id,
-    name: t.displayName ?? t.name,
+    name: t.displayName ?? [t.location, t.name].filter(Boolean).join(' '),
     short: t.shortDisplayName ?? t.location,
     nickname: t.name,
     abbr: t.abbreviation,
     color: t.color ? `#${t.color}` : null,
     logo: teamLogo(t),
-    rank: t.rank && t.rank <= 25 ? t.rank : null,
+    rank,
     standing: t.standingSummary ?? '',
-    records: recordItems,
-    venue: t.franchise?.venue?.fullName ?? t.venue?.fullName ?? '',
-    link: t.links?.find((l) => l.rel?.includes('clubhouse'))?.href ?? t.links?.[0]?.href ?? null,
+    season: schedule.value.season?.displayName ?? '',
+    records,
+    link: t.clubhouse ?? null,
     games,
     stats: stats.status === 'fulfilled' ? normalizeStatCategories(stats.value) : [],
   }
@@ -473,25 +495,13 @@ export async function fetchTeam(sport, id) {
 
 // ---------- team directory (for adding favorites) ----------
 
+// Built from standings, since ESPN's /teams list has no CORS headers either.
 export async function fetchTeams(sport) {
-  const groups = sport.id === 'cfb' ? ['80', '81'] : [null]
-  const lists = await Promise.all(
-    groups.map((g) =>
-      getJSON(`${SITE}/${sport.path}/teams?limit=1000${g ? `&groups=${g}` : ''}`).then(
-        (raw) => raw.sports?.[0]?.leagues?.[0]?.teams ?? [],
-      ),
-    ),
-  )
+  const divisions = sport.id === 'cfb' ? ['80', '81'] : [undefined]
+  const groups = (await Promise.all(divisions.map((d) => fetchStandings(sport, d)))).flat()
   const seen = new Set()
-  return lists
-    .flat()
-    .map(({ team: t }) => ({
-      id: t.id,
-      name: t.shortDisplayName ?? t.location ?? t.displayName,
-      fullName: t.displayName,
-      abbr: t.abbreviation,
-      logo: teamLogo(t),
-    }))
+  return groups
+    .flatMap((g) => g.entries.map((e) => ({ ...e.team, conference: g.abbr || g.name })))
     .filter((t) => t.id && !seen.has(t.id) && seen.add(t.id))
-    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .sort((a, b) => (a.fullName ?? a.name).localeCompare(b.fullName ?? b.name))
 }
