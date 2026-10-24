@@ -505,3 +505,95 @@ export async function fetchTeams(sport) {
     .filter((t) => t.id && !seen.has(t.id) && seen.add(t.id))
     .sort((a, b) => (a.fullName ?? a.name).localeCompare(b.fullName ?? b.name))
 }
+
+// ---------- roster & players ----------
+
+const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports'
+
+function normalizePlayer(a) {
+  return {
+    id: a.id,
+    name: a.fullName ?? a.displayName,
+    jersey: a.jersey ?? '',
+    position: a.position?.abbreviation ?? '',
+    positionName: a.position?.displayName ?? a.position?.name ?? '',
+    headshot: a.headshot?.href ?? null,
+    height: a.displayHeight ?? '',
+    weight: a.displayWeight ?? '',
+    year: a.experience?.displayValue ?? '',
+    hometown: a.birthPlace?.displayText ?? [a.birthPlace?.city, a.birthPlace?.state].filter(Boolean).join(', '),
+  }
+}
+
+const GROUP_LABEL = { offense: 'Offense', defense: 'Defense', specialTeam: 'Special Teams', specialteam: 'Special Teams' }
+
+/** Returns [{ label, players }] — football groups by unit, other sports are one list. */
+export async function fetchRoster(sport, teamId) {
+  const raw = await getJSON(`${SITE}/${sport.path}/teams/${teamId}/roster`)
+  const athletes = raw.athletes ?? []
+  const groups = athletes.some((a) => Array.isArray(a.items))
+    ? athletes.map((g) => ({
+        label: GROUP_LABEL[g.position] ?? g.position ?? 'Players',
+        players: (g.items ?? []).map(normalizePlayer),
+      }))
+    : [{ label: 'Players', players: athletes.map(normalizePlayer) }]
+  const coach = raw.coach?.[0]
+  return {
+    groups: groups.filter((g) => g.players.length),
+    coach: coach ? [coach.firstName, coach.lastName].filter(Boolean).join(' ') : '',
+  }
+}
+
+function normalizeStatsTable(s) {
+  // overview.statistics: { labels, displayNames, splits: [{ displayName, stats: [...] }] }
+  if (!s?.labels?.length || !s.splits?.length) return null
+  return {
+    labels: s.labels,
+    names: s.displayNames ?? s.labels,
+    rows: s.splits.map((r) => ({ label: r.displayName, values: r.stats ?? [] })),
+  }
+}
+
+export async function fetchAthlete(sport, id) {
+  const base = `${WEB}/${sport.path}/athletes/${id}`
+  const [info, overview] = await Promise.allSettled([getJSON(base), getJSON(`${base}/overview`)])
+  if (info.status === 'rejected') throw info.reason
+  const a = info.value.athlete ?? {}
+  const ov = overview.status === 'fulfilled' ? overview.value : {}
+  return {
+    id: a.id ?? id,
+    name: a.displayName ?? a.fullName,
+    jersey: a.displayJersey ?? (a.jersey ? `#${a.jersey}` : ''),
+    position: a.position?.displayName ?? '',
+    headshot: a.headshot?.href ?? null,
+    height: a.displayHeight ?? '',
+    weight: a.displayWeight ?? '',
+    year: a.displayExperience ?? '',
+    hometown: a.displayBirthPlace ?? '',
+    team: a.team?.displayName ?? '',
+    status: a.status?.name && a.status.name !== 'Active' ? a.status.name : '',
+    link: a.links?.find((l) => l.rel?.includes('playercard'))?.href ?? a.links?.[0]?.href ?? null,
+    summary: a.statsSummary?.statistics?.length
+      ? {
+          title: a.statsSummary.displayName ?? 'Season stats',
+          stats: a.statsSummary.statistics.map((s) => ({
+            name: s.shortDisplayName ?? s.abbreviation ?? s.displayName,
+            full: s.displayName,
+            value: s.displayValue,
+            rank: s.rankDisplayValue ?? '',
+          })),
+        }
+      : null,
+    table: normalizeStatsTable(ov.statistics),
+    news: (ov.news ?? []).slice(0, 5).map((n) => ({
+      headline: n.headline,
+      link: n.links?.web?.href ?? null,
+      date: n.published ?? n.lastModified ?? null,
+    })),
+  }
+}
+
+/** Official athletics site: ESPN doesn't publish it, so jump to the top search result. */
+export function schoolSiteUrl(teamName) {
+  return `https://duckduckgo.com/?q=${encodeURIComponent(`\\${teamName} official athletics website`)}`
+}

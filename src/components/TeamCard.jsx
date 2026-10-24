@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { fetchTeam, sportById } from '../api.js'
+import { useEffect, useState } from 'react'
+import { fetchTeam, schoolSiteUrl, sportById } from '../api.js'
+import Roster, { PlayerView } from './Roster.jsx'
 import { useData, useFavorites } from '../hooks.js'
 import { closeTeam, useOpenTeam } from '../team.js'
 import TeamLogo from './TeamLogo.jsx'
@@ -30,6 +31,10 @@ function summarize(games) {
 function Body({ sport, open }) {
   const { data: team, error, loading, refresh } = useData(() => fetchTeam(sport, open.id), [sport.id, open.id])
   const { isFav, toggle } = useFavorites()
+  const [tab, setTab] = useState('overview')
+  const [player, setPlayer] = useState(null)
+
+  if (player) return <PlayerView sport={sport} player={player} onBack={() => setPlayer(null)} />
 
   if (loading)
     return (
@@ -71,6 +76,22 @@ function Body({ sport, open }) {
         </button>
       </div>
 
+      <nav className="tc-tabs">
+        <button className={tab === 'overview' ? 'on' : ''} onClick={() => setTab('overview')}>
+          Overview
+        </button>
+        <button className={tab === 'roster' ? 'on' : ''} onClick={() => setTab('roster')}>
+          Roster
+        </button>
+        <a href={schoolSiteUrl(team.name)} target="_blank" rel="noreferrer">
+          School website ↗
+        </a>
+      </nav>
+
+      {tab === 'roster' ? (
+        <Roster sport={sport} teamId={team.id} onPlayer={setPlayer} />
+      ) : (
+        <>
       <div className="tc-stats">
         <div className="tc-big">
           <span className="label">Record</span>
@@ -178,6 +199,8 @@ function Body({ sport, open }) {
             Full team page on ESPN ↗
           </a>
         </p>
+      )}
+        </>
       )}
     </>
   )
