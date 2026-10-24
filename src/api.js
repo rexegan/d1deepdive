@@ -470,3 +470,28 @@ export async function fetchTeam(sport, id) {
     stats: stats.status === 'fulfilled' ? normalizeStatCategories(stats.value) : [],
   }
 }
+
+// ---------- team directory (for adding favorites) ----------
+
+export async function fetchTeams(sport) {
+  const groups = sport.id === 'cfb' ? ['80', '81'] : [null]
+  const lists = await Promise.all(
+    groups.map((g) =>
+      getJSON(`${SITE}/${sport.path}/teams?limit=1000${g ? `&groups=${g}` : ''}`).then(
+        (raw) => raw.sports?.[0]?.leagues?.[0]?.teams ?? [],
+      ),
+    ),
+  )
+  const seen = new Set()
+  return lists
+    .flat()
+    .map(({ team: t }) => ({
+      id: t.id,
+      name: t.shortDisplayName ?? t.location ?? t.displayName,
+      fullName: t.displayName,
+      abbr: t.abbreviation,
+      logo: teamLogo(t),
+    }))
+    .filter((t) => t.id && !seen.has(t.id) && seen.add(t.id))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+}

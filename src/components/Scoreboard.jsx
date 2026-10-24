@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { fetchScoreboard, fromKey, leagueInfo, shiftKey, todayKey } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
+import { EditTeamsButton } from './MyTeamsEditor.jsx'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import { ErrorBox, Loading, Updated } from './Status.jsx'
 
@@ -161,14 +162,22 @@ export default function Scoreboard({ sport, params }) {
         />
       ) : (
         <div className="toolbar">
-          {filterSeg}
+          <div className="filter-group">
+            {filterSeg}
+            <EditTeamsButton />
+          </div>
           {searchBox}
         </div>
       )}
 
       <div className="status-bar">
         <Updated updated={updated} polling={polling} onRefresh={refresh} />
-        {sport.leagues && filterSeg}
+        {sport.leagues && (
+          <div className="filter-group">
+            {filterSeg}
+            <EditTeamsButton />
+          </div>
+        )}
       </div>
 
       {loading && <Loading label="Loading games…" />}

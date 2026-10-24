@@ -23,3 +23,21 @@ export function useOpenTeam() {
   }, [])
   return team
 }
+
+// The My Teams editor panel, opened from Home or the scoreboard.
+let editorOpen = false
+const editorListeners = new Set()
+
+export function setEditorOpen(open) {
+  editorOpen = open
+  editorListeners.forEach((fn) => fn(open))
+}
+
+export function useEditorOpen() {
+  const [open, setOpen] = useState(editorOpen)
+  useEffect(() => {
+    editorListeners.add(setOpen)
+    return () => editorListeners.delete(setOpen)
+  }, [])
+  return open
+}

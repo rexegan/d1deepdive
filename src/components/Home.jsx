@@ -3,6 +3,7 @@ import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
+import { EditTeamsButton } from './MyTeamsEditor.jsx'
 import { Loading, Updated } from './Status.jsx'
 
 const ORDER = { in: 0, pre: 1, post: 2 }
@@ -44,10 +45,13 @@ export default function Home() {
       <Updated updated={updated} polling={polling} onRefresh={refresh} />
 
       <section className="home-block">
-        <h2>My Teams</h2>
+        <div className="heading-row">
+          <h2>My Teams</h2>
+          <EditTeamsButton />
+        </div>
         {favs.length === 0 ? (
           <p className="muted">
-            Tap ☆ next to any team on a scoreboard or in the rankings to follow it. Their games show up
+            Tap Edit to add teams, or tap ☆ next to any team on a scoreboard or in the rankings. Their games show up
             here first.
           </p>
         ) : (

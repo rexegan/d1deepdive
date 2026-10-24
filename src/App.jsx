@@ -5,6 +5,7 @@ import Scoreboard from './components/Scoreboard.jsx'
 import Rankings from './components/Rankings.jsx'
 import Standings from './components/Standings.jsx'
 import TeamCard from './components/TeamCard.jsx'
+import MyTeamsEditor from './components/MyTeamsEditor.jsx'
 
 const VIEWS = [
   { id: 'scores', label: 'Scores' },
@@ -63,6 +64,7 @@ export default function App() {
       </main>
 
       <TeamCard />
+      <MyTeamsEditor />
 
       <footer className="foot">
         Data from ESPN's public scoreboard feeds. Followed teams are saved in this browser.
