@@ -2,6 +2,7 @@ import { SPORTS, fetchScoreboard, todayKey } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
 import TeamLogo from './TeamLogo.jsx'
+import TeamName from './TeamName.jsx'
 import { Loading, Updated } from './Status.jsx'
 
 const ORDER = { in: 0, pre: 1, post: 2 }
@@ -54,7 +55,7 @@ export default function Home() {
             <div className="fav-chips">
               {favs.map((f) => (
                 <span key={`${f.sport}:${f.id}`} className="chip">
-                  <TeamLogo src={f.logo} size={18} /> {f.name}
+                  <TeamLogo src={f.logo} size={18} /> <TeamName sport={f.sport} team={f} />
                   <span className="muted"> · {SPORTS.find((s) => s.id === f.sport)?.short}</span>
                 </span>
               ))}

@@ -3,6 +3,7 @@ import { fetchRankings, fetchStandings, groupMatches, leagueInfo } from '../api.
 import { buildHash, useData } from '../hooks.js'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
+import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 async function load(sport, division, withRanks) {
@@ -109,7 +110,7 @@ export default function Standings({ sport, params }) {
                         <span className="team-inline">
                           <TeamLogo src={e.team.logo} size={20} />
                           {data.ranks.has(e.team.id) && <span className="rank">{data.ranks.get(e.team.id)}</span>}
-                          {e.team.name}
+                          <TeamName sport={sport.id} team={e.team} />
                         </span>
                       </td>
                       {showConf && <td>{e.conf}</td>}

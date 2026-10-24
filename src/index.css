@@ -806,3 +806,260 @@ table.standings .left {
     display: none;
   }
 }
+
+/* ---------- team links & card ---------- */
+
+.team-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(5 10 20 / 0.55);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tc-panel {
+  position: relative;
+  width: min(520px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 20px 20px 32px;
+  box-shadow: -8px 0 30px rgb(0 0 0 / 0.3);
+  animation: slide-in 0.18s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+}
+
+.tc-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: none;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.tc-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 32px 14px 0;
+  border-bottom: 4px solid var(--team, var(--border));
+  margin-bottom: 14px;
+}
+
+.tc-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.tc-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  display: block;
+}
+
+.tc-head h2 .rank {
+  font-size: 0.9rem;
+}
+
+.tc-head p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+}
+
+.tc-head .star {
+  font-size: 1.4rem;
+}
+
+.tc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tc-big {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tc-big strong {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tc-form,
+.tc-next {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.tc-next .team-link {
+  font-weight: 600;
+}
+
+.form-pill {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--muted);
+}
+
+.form-pill.W {
+  background: var(--up);
+}
+
+.form-pill.L {
+  background: var(--down);
+}
+
+.tc-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.tc-section summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tc-schedule {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 0.88rem;
+}
+
+.tc-schedule li {
+  display: grid;
+  grid-template-columns: 52px 28px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-top: 1px solid var(--surface-2);
+}
+
+.tc-schedule .opp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tc-schedule .res a {
+  text-decoration: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.r-W {
+  color: var(--up);
+}
+
+.r-L {
+  color: var(--down);
+}
+
+.conf-dot {
+  color: var(--gold);
+}
+
+.tiny {
+  font-size: 0.72rem;
+  margin: 6px 0 0;
+}
+
+.tc-statlist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 14px;
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+}
+
+.tc-statlist div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--surface-2);
+  padding: 3px 0;
+}
+
+.tc-statlist dt {
+  color: var(--muted);
+}
+
+.tc-statlist dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nat-rank {
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.tc-foot {
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .tc-statlist {
+    grid-template-columns: 1fr;
+  }
+}

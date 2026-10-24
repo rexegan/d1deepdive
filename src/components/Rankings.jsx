@@ -3,6 +3,7 @@ import { fetchRankings, fetchStandings, groupMatches, leagueInfo } from '../api.
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
+import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 function Move({ rank, previous }) {
@@ -102,7 +103,11 @@ export default function Rankings({ sport, params }) {
                 <Move rank={r.rank} previous={r.previous} />
                 <TeamLogo src={r.team.logo} size={28} />
                 <span className="team-cell">
-                  <strong>{r.team.fullName || r.team.name}</strong>
+                  <strong>
+                    <TeamName sport={sport.id} team={r.team}>
+                      {r.team.fullName || r.team.name}
+                    </TeamName>
+                  </strong>
                   <span className="muted">
                     {r.record}
                     {r.firstPlace ? ` · ${r.firstPlace} first-place` : ''}

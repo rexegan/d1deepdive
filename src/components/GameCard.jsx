@@ -1,5 +1,6 @@
 import TeamLogo from './TeamLogo.jsx'
 import { useFavorites } from '../hooks.js'
+import TeamName from './TeamName.jsx'
 
 function startTime(iso) {
   const d = new Date(iso)
@@ -16,7 +17,7 @@ function TeamRow({ team, sport, game }) {
       <TeamLogo src={team.logo} alt="" size={26} />
       <div className="team-name">
         {team.rank && <span className="rank">{team.rank}</span>}
-        <span className="name">{team.name}</span>
+        <TeamName sport={sport} team={team} className="name" />
         {team.possession && <span className="poss" title="Possession">●</span>}
         {team.record && <span className="record">{team.record}</span>}
       </div>

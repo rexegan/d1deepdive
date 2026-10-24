@@ -372,3 +372,101 @@ export async function fetchStandings(sport, division) {
   if (!out.length && raw.standings) collectGroups(raw, '', out)
   return out
 }
+
+// ---------- team detail ----------
+
+function scoreValue(score) {
+  if (score == null) return ''
+  if (typeof score === 'object') return score.displayValue ?? String(score.value ?? '')
+  return String(score)
+}
+
+function normalizeScheduleEvent(e, teamId) {
+  const comp = e.competitions?.[0] ?? {}
+  const type = (comp.status ?? e.status ?? {}).type ?? {}
+  const competitors = comp.competitors ?? []
+  const us = competitors.find((c) => String(c.team?.id ?? c.id) === String(teamId))
+  const them = competitors.find((c) => c !== us)
+  const t = them?.team ?? {}
+  const rank = them?.curatedRank?.current
+  const usScore = scoreValue(us?.score)
+  const themScore = scoreValue(them?.score)
+  const state = type.state ?? 'pre'
+  return {
+    id: e.id,
+    date: e.date,
+    state,
+    detail: type.shortDetail ?? type.detail ?? '',
+    home: us?.homeAway === 'home',
+    neutral: !!comp.neutralSite,
+    conferenceGame: !!comp.conferenceCompetition,
+    result:
+      state === 'post' && usScore !== '' ? (us?.winner ? 'W' : them?.winner ? 'L' : 'T') : null,
+    score: usScore !== '' && themScore !== '' ? `${usScore}-${themScore}` : '',
+    pointsFor: Number(usScore) || 0,
+    pointsAgainst: Number(themScore) || 0,
+    link: e.links?.find((l) => l.rel?.includes('summary'))?.href ?? e.links?.[0]?.href ?? null,
+    opponent: {
+      id: t.id,
+      name: t.shortDisplayName ?? t.location ?? t.displayName,
+      fullName: t.displayName,
+      abbr: t.abbreviation,
+      logo: teamLogo(t),
+      rank: rank && rank <= 25 ? rank : null,
+    },
+  }
+}
+
+function normalizeStatCategories(raw) {
+  const cats =
+    raw?.results?.stats?.categories ?? raw?.statistics?.splits?.categories ?? raw?.splits?.categories ?? []
+  return cats
+    .map((c) => ({
+      name: c.displayName ?? c.name,
+      stats: (c.stats ?? [])
+        .filter((s) => s.displayValue != null && s.displayValue !== '')
+        .map((s) => ({
+          name: s.displayName ?? s.shortDisplayName ?? s.name,
+          value: s.perGameDisplayValue && /per ?game/i.test(s.displayName ?? '') ? s.perGameDisplayValue : s.displayValue,
+          rank: s.rankDisplayValue ?? (s.rank ? `#${s.rank}` : ''),
+        })),
+    }))
+    .filter((c) => c.stats.length)
+}
+
+export async function fetchTeam(sport, id) {
+  const base = `${SITE}/${sport.path}/teams/${id}`
+  const [info, schedule, stats] = await Promise.allSettled([
+    getJSON(base),
+    getJSON(`${base}/schedule`),
+    getJSON(`${base}/statistics`),
+  ])
+  if (info.status === 'rejected') throw info.reason
+  const t = info.value.team ?? {}
+  const recordItems = (t.record?.items ?? []).map((r) => ({
+    type: r.type,
+    label: (r.description ?? r.type).replace(/ record$/i, ''),
+    summary: r.summary,
+    stats: Object.fromEntries((r.stats ?? []).map((s) => [s.name, s.value])),
+  }))
+  const games =
+    schedule.status === 'fulfilled'
+      ? (schedule.value.events ?? []).map((e) => normalizeScheduleEvent(e, t.id ?? id))
+      : []
+  return {
+    id: t.id ?? id,
+    name: t.displayName ?? t.name,
+    short: t.shortDisplayName ?? t.location,
+    nickname: t.name,
+    abbr: t.abbreviation,
+    color: t.color ? `#${t.color}` : null,
+    logo: teamLogo(t),
+    rank: t.rank && t.rank <= 25 ? t.rank : null,
+    standing: t.standingSummary ?? '',
+    records: recordItems,
+    venue: t.franchise?.venue?.fullName ?? t.venue?.fullName ?? '',
+    link: t.links?.find((l) => l.rel?.includes('clubhouse'))?.href ?? t.links?.[0]?.href ?? null,
+    games,
+    stats: stats.status === 'fulfilled' ? normalizeStatCategories(stats.value) : [],
+  }
+}
