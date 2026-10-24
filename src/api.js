@@ -89,6 +89,34 @@ export const SPORTS = [
 
 export const sportById = (id) => SPORTS.find((s) => s.id === id)
 
+const SECTION_DIVISION = { FBS: '80', FCS: '81' }
+const DIVISION_IDS = new Set(['80', '81', '35', '36'])
+
+/**
+ * Resolve a league picker id ('top25', a division or a conference) into
+ * { id, label, section, division, conference, top25 }.
+ */
+export function leagueInfo(sport, id) {
+  const l = sport.leagues?.find((x) => x.id === id) ?? sport.leagues?.[0]
+  if (!l) return null
+  const top25 = l.id === 'top25'
+  const isDivision = top25 || DIVISION_IDS.has(l.id)
+  return {
+    ...l,
+    top25,
+    division: top25 ? '80' : isDivision ? l.id : SECTION_DIVISION[l.section],
+    conference: isDivision ? null : l.id,
+  }
+}
+
+/** Does a standings group correspond to this league picker entry? */
+export function groupMatches(group, league) {
+  if (String(group.id) === league.id) return true
+  const label = league.label.toLowerCase()
+  const name = group.name.toLowerCase()
+  return group.abbr?.toLowerCase() === label || name === label || name.startsWith(`${label} · `)
+}
+
 // ---------- fetching ----------
 
 const cache = new Map()
@@ -297,6 +325,7 @@ function normalizeEntry(entry) {
       id: t.id,
       name: t.shortDisplayName ?? t.location ?? t.displayName,
       fullName: t.displayName,
+      abbr: t.abbreviation,
       logo: teamLogo(t),
     },
     overall,

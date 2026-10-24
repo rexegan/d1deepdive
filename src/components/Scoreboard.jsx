@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { fetchScoreboard, fromKey, shiftKey, todayKey } from '../api.js'
+import { fetchScoreboard, fromKey, leagueInfo, shiftKey, todayKey } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
+import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import { ErrorBox, Loading, Updated } from './Status.jsx'
 
 const FILTERS = [
@@ -24,9 +25,9 @@ function dayLabel(key) {
 export default function Scoreboard({ sport, params }) {
   const date = params.date ?? todayKey()
   // Sports with a league picker use ?g=<group>; 'top25' is FBS filtered to ranked teams.
-  const league = sport.leagues ? (params.g ?? 'top25') : null
-  const top25Only = league === 'top25'
-  const division = league ? (top25Only ? '80' : league) : (params.div ?? sport.divisions[0]?.id)
+  const league = leagueInfo(sport, params.g)
+  const top25Only = !!league?.top25
+  const division = league ? league.conference ?? league.division : (params.div ?? sport.divisions[0]?.id)
   const { week, st } = params
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
@@ -49,14 +50,12 @@ export default function Scoreboard({ sport, params }) {
 
   const games = useMemo(() => {
     if (!data) return []
-    const q = query.trim().toLowerCase()
     return data.events.filter((g) => {
       const teams = [g.home, g.away].filter(Boolean)
       if ((top25Only || filter === 'top25') && !teams.some((t) => t.rank)) return false
       if (filter === 'mine' && !teams.some((t) => isFav(sport.id, t.id))) return false
       if (filter === 'live' && g.state !== 'in') return false
-      if (q && !teams.some((t) => `${t.name} ${t.fullName} ${t.abbr}`.toLowerCase().includes(q)))
-        return false
+      if (query && !teams.some((t) => matchesTeam(t, query))) return false
       return true
     })
     // favList is read so the list re-filters when a team is followed
@@ -83,15 +82,7 @@ export default function Scoreboard({ sport, params }) {
     </div>
   )
 
-  const searchBox = (
-    <input
-      className="search"
-      type="search"
-      placeholder="Find a team"
-      value={query}
-      onChange={(e) => setQuery(e.target.value)}
-    />
-  )
+  const searchBox = <SearchBox value={query} onChange={setQuery} />
 
   return (
     <section>
@@ -161,36 +152,13 @@ export default function Scoreboard({ sport, params }) {
       </div>
 
       {sport.leagues ? (
-        <div className="toolbar league-bar">
-          <div className="seg">
-            {sport.quickLeagues.map((id) => (
-              <button key={id} className={id === league ? 'on' : ''} onClick={() => go({ g: id, week: null, st: null })}>
-                {sport.leagues.find((l) => l.id === id).label}
-              </button>
-            ))}
-          </div>
-          <select aria-label="League" value={league} onChange={(e) => go({ g: e.target.value, week: null, st: null })}>
-            {[...new Set(sport.leagues.map((l) => l.section))].map((section) => {
-              const items = sport.leagues.filter((l) => l.section === section)
-              return section ? (
-                <optgroup key={section} label={section}>
-                  {items.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : (
-                items.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.label}
-                  </option>
-                ))
-              )
-            })}
-          </select>
-          {searchBox}
-        </div>
+        <LeagueBar
+          sport={sport}
+          league={league.id}
+          onLeague={(g) => go({ g, week: null, st: null })}
+          query={query}
+          onQuery={setQuery}
+        />
       ) : (
         <div className="toolbar">
           {filterSeg}

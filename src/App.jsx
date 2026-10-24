@@ -48,14 +48,14 @@ export default function App() {
               </h1>
               <nav className="tabs" aria-label="Views">
                 {VIEWS.map((v) => (
-                  <a key={v.id} href={buildHash(sport.id, v.id)} className={v.id === view ? 'on' : ''}>
+                  <a key={v.id} href={buildHash(sport.id, v.id, { g: route.params.g })} className={v.id === view ? 'on' : ''}>
                     {v.label}
                   </a>
                 ))}
               </nav>
             </div>
             {view === 'scores' && <Scoreboard key={sport.id} sport={sport} params={route.params} />}
-            {view === 'rankings' && <Rankings key={sport.id} sport={sport} />}
+            {view === 'rankings' && <Rankings key={sport.id} sport={sport} params={route.params} />}
             {view === 'standings' && <Standings key={sport.id} sport={sport} params={route.params} />}
           </>
         )}
