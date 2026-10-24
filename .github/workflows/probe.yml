@@ -1,0 +1,21 @@
+name: Probe ESPN endpoints
+on:
+  push:
+    branches: [probe-espn]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B=https://site.api.espn.com/apis/site/v2/sports/football/college-football
+          for u in "$B/scoreboard" "$B/teams/333" "$B/teams/333/schedule" "$B/teams/333/statistics" "$B/teams?limit=1000&groups=80" "$B/rankings" "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80" "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/333" "https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/teams/333/statistics" "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/333/schedule"; do
+            echo "=== $u"
+            curl -s -o /tmp/body -D - -H "Origin: https://rexegan.github.io" "$u" | grep -iE "^HTTP|access-control|location|content-type"
+            head -c 300 /tmp/body; echo
+          done
+          echo "=== team keys"; curl -s "$B/teams/333" | jq -c '.team | keys, .record.items[0], .nextEvent[0].id' | head -c 1500; echo
+          echo "=== schedule sample"; curl -s "$B/teams/333/schedule" | jq -c '.events[0].competitions[0].competitors[0] | {id, homeAway, winner, score, team: .team.id}' | head -c 800; echo
+          echo "=== stats shape"; curl -s "$B/teams/333/statistics" | jq -c 'keys, (.results|keys?), (.results.stats.categories[0] | {name, displayName, s: .stats[0]})' | head -c 1500; echo
+          echo "=== standings shape"; curl -s "https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80" | jq -c '.children[0] | {id, name, abbreviation, n: (.standings.entries|length), stats: [.standings.entries[0].stats[] | {name, type, displayValue}]}' | head -c 2500; echo
+          echo "=== rankings names"; curl -s "$B/rankings" | jq -c '[.rankings[].name]'
+          echo "=== bball scoreboard groups"; curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/college-softball/scoreboard" | jq -c '.leagues[0].name, (.events|length)'
