@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fetchRankings, fetchStandings, groupMatches, leagueInfo } from '../api.js'
+import { fetchRankings, fetchStandings, groupMatches, leagueInfo, sportById } from '../api.js'
 import { buildHash, useData } from '../hooks.js'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
@@ -7,10 +7,23 @@ import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 async function load(sport, division, withRanks) {
-  const [groups, polls] = await Promise.all([
+  const [own, borrowed, polls] = await Promise.all([
     fetchStandings(sport, division),
-    withRanks ? fetchRankings(sport).catch(() => []) : [],
+    sport.confFrom ? fetchStandings(sportById(sport.confFrom)) : null,
+    withRanks && !sport.noRankings ? fetchRankings(sport).catch(() => []) : [],
   ])
+  // Sports without conference standings: regroup their single D1 table by the
+  // borrowed sport's conferences.
+  let groups = own
+  if (borrowed) {
+    const entries = own.flatMap((g) => g.entries)
+    groups = borrowed
+      .map((g) => {
+        const ids = new Set(g.entries.map((e) => String(e.team.id)))
+        return { ...g, entries: entries.filter((e) => ids.has(String(e.team.id))) }
+      })
+      .filter((g) => g.entries.length)
+  }
   // Rank badges come from the first poll for this division (AP for FBS).
   const fcs = division === '81'
   const poll = polls.find((p) => /fcs/i.test(p.name) === fcs)
@@ -20,7 +33,7 @@ async function load(sport, division, withRanks) {
 
 export default function Standings({ sport, params }) {
   const league = leagueInfo(sport, params.g)
-  const division = league ? league.division : (params.div ?? sport.divisions[0]?.id)
+  const division = league ? (sport.byWeek ? league.division : undefined) : (params.div ?? sport.divisions[0]?.id)
   const { data, error, loading, refresh } = useData(
     () => load(sport, division, !!league),
     [sport.id, division],
@@ -39,7 +52,7 @@ export default function Standings({ sport, params }) {
     .map((g) => ({
       ...g,
       entries: g.entries.filter(
-        (e) => (!league?.top25 || data.ranks.has(e.team.id)) && matchesTeam(e.team, query),
+        (e) => (!league?.top25 || !data.ranks.size || data.ranks.has(e.team.id)) && matchesTeam(e.team, query),
       ),
     }))
     .filter((g) => g.entries.length)

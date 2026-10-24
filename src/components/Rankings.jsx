@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fetchRankings, fetchStandings, groupMatches, leagueInfo } from '../api.js'
+import { conferenceMembers, fetchRankings, leagueInfo } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
@@ -28,13 +28,11 @@ function pollsFor(polls, league) {
 }
 
 async function load(sport, league) {
-  const [polls, groups] = await Promise.all([
+  if (sport.noRankings) return { polls: [], members: null }
+  const [polls, members] = await Promise.all([
     fetchRankings(sport),
-    league?.conference ? fetchStandings(sport, league.division) : null,
+    league?.conference ? conferenceMembers(sport, league) : null,
   ])
-  const members = groups
-    ? new Set(groups.filter((g) => groupMatches(g, league)).flatMap((g) => g.entries.map((e) => e.team.id)))
-    : null
   return { polls: pollsFor(polls, league), members }
 }
 
@@ -65,7 +63,9 @@ export default function Rankings({ sport, params }) {
     if (!data.polls.length)
       return (
         <div className="state">
-          {league?.section === 'Other divisions'
+          {sport.noRankings
+            ? `ESPN doesn't publish national rankings for college ${sport.name.toLowerCase()}.`
+            : league?.section === 'Other divisions'
             ? `ESPN doesn't publish ${league.label} rankings.`
             : 'No rankings published yet this season.'}
         </div>
@@ -73,7 +73,7 @@ export default function Rankings({ sport, params }) {
 
     const poll = data.polls.find((p) => p.id === pollId) ?? data.polls[0]
     const ranks = poll.ranks.filter(
-      (r) => (!data.members || data.members.has(r.team.id)) && matchesTeam(r.team, query),
+      (r) => (!data.members || data.members.has(String(r.team.id))) && matchesTeam(r.team, query),
     )
 
     return (

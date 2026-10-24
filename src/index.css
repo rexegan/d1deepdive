@@ -1324,3 +1324,60 @@ table.standings .left {
   background: var(--accent);
   color: #fff;
 }
+
+.follow-conf {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.follow-conf.on {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.conf-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.conf-link {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conf-link .muted {
+  font-size: 0.8rem;
+}
+
+.conf-link-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.conf-link-actions a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ed-add-conf {
+  display: flex;
+  gap: 8px;
+}
+
+.ed-add-conf select {
+  flex: 1;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

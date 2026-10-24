@@ -29,7 +29,7 @@ const anyLive = (rows) => rows.some((r) => r.data?.events.some((e) => e.state ==
 
 export default function Home() {
   const { data, loading, updated, polling, refresh } = useData(loadAll, [], { shouldPoll: anyLive })
-  const { isFav, list: favs } = useFavorites()
+  const { isFav, list: favs, conferences } = useFavorites()
 
   if (loading) return <Loading label="Checking every scoreboard…" />
 
@@ -76,6 +76,31 @@ export default function Home() {
           </>
         )}
       </section>
+
+      {conferences.length > 0 && (
+        <section className="home-block">
+          <div className="heading-row">
+            <h2>My Conferences</h2>
+            <EditTeamsButton />
+          </div>
+          <div className="conf-links">
+            {conferences.map((c) => {
+              const s = SPORTS.find((x) => x.id === c.sport)
+              return (
+                <div key={`${c.sport}:${c.id}`} className="conf-link">
+                  <strong>{c.label}</strong>
+                  <span className="muted">{s?.name}</span>
+                  <span className="conf-link-actions">
+                    <a href={buildHash(c.sport, 'scores', { g: c.id })}>Scores</a>
+                    {!s?.noRankings && <a href={buildHash(c.sport, 'rankings', { g: c.id })}>Rankings</a>}
+                    <a href={buildHash(c.sport, 'standings', { g: c.id })}>Standings</a>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {live.length > 0 && (
         <section className="home-block">

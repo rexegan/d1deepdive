@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { fetchScoreboard, fromKey, leagueInfo, shiftKey, todayKey } from '../api.js'
+import { conferenceMembers, fetchScoreboard, fromKey, leagueInfo, shiftKey, todayKey } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
 import { EditTeamsButton } from './MyTeamsEditor.jsx'
@@ -28,20 +28,30 @@ export default function Scoreboard({ sport, params }) {
   // Sports with a league picker use ?g=<group>; 'top25' is FBS filtered to ranked teams.
   const league = leagueInfo(sport, params.g)
   const top25Only = !!league?.top25
-  const division = league ? league.conference ?? league.division : (params.div ?? sport.divisions[0]?.id)
+  // Conference filtering is server-side via ESPN groups, except for sports
+  // that borrow conference membership (filtered client-side below).
+  const clientConf = !!(sport.confFrom && league?.conference)
+  const division = league
+    ? clientConf
+      ? undefined
+      : (league.conference ?? league.division)
+    : (params.div ?? sport.divisions[0]?.id)
   const { week, st } = params
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
   const { isFav, list: favList } = useFavorites()
 
   const { data, error, loading, updated, polling, refresh } = useData(
-    (o) =>
-      fetchScoreboard(
-        sport,
-        sport.byWeek ? { week, seasonType: st, division } : { date, division },
-        o,
-      ),
-    [sport.id, date, week, st, division],
+    async (o) => {
+      const [board, members] = await Promise.all([
+        fetchScoreboard(sport, sport.byWeek ? { week, seasonType: st, division } : { date, division }, o),
+        clientConf ? conferenceMembers(sport, league) : null,
+      ])
+      if (!members) return board
+      const inConf = (t) => t && members.has(String(t.id))
+      return { ...board, events: board.events.filter((g) => inConf(g.home) || inConf(g.away)) }
+    },
+    [sport.id, date, week, st, division, league?.id],
     { shouldPoll: hasLive },
   )
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { SPORTS, fetchTeams, sportById } from '../api.js'
+import { SPORTS, conferencesOf, fetchTeams, sportById } from '../api.js'
 import { useData, useFavorites } from '../hooks.js'
 import { setEditorOpen, useEditorOpen } from '../team.js'
 import { SearchBox, matchesTeam } from './LeagueBar.jsx'
@@ -43,7 +43,9 @@ function AddTeams({ sport }) {
 export default function MyTeamsEditor() {
   const open = useEditorOpen()
   const [sportId, setSportId] = useState(SPORTS[0].id)
-  const { list, toggle } = useFavorites()
+  const { list, toggle, conferences, toggleConf, isConfFav } = useFavorites()
+  const [confSport, setConfSport] = useState(SPORTS[0].id)
+  const [confPick, setConfPick] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -61,10 +63,10 @@ export default function MyTeamsEditor() {
         <button className="tc-close" onClick={close} aria-label="Close">
           ×
         </button>
-        <h2 className="ed-title">Edit My Teams</h2>
+        <h2 className="ed-title">Edit My Teams &amp; Conferences</h2>
 
         <section className="tc-section">
-          <h4>Following ({list.length})</h4>
+          <h4>Teams ({list.length})</h4>
           {list.length === 0 ? (
             <p className="muted">You aren't following any teams yet. Add some below.</p>
           ) : (
@@ -94,6 +96,60 @@ export default function MyTeamsEditor() {
             ))}
           </div>
           <AddTeams key={sportId} sport={sportById(sportId)} />
+        </section>
+
+        <section className="tc-section">
+          <h4>Conferences ({conferences.length})</h4>
+          {conferences.length > 0 && (
+            <ul className="ed-list">
+              {conferences.map((c) => (
+                <li key={`${c.sport}:${c.id}`}>
+                  <span className="ed-name">
+                    {c.label} <span className="muted">· {sportById(c.sport)?.name}</span>
+                  </span>
+                  <button className="btn danger" onClick={() => toggleConf(c.sport, c)} aria-label={`Remove ${c.label}`}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="seg small ed-sports">
+            {SPORTS.map((s) => (
+              <button
+                key={s.id}
+                className={s.id === confSport ? 'on' : ''}
+                onClick={() => {
+                  setConfSport(s.id)
+                  setConfPick('')
+                }}
+              >
+                {s.short}
+              </button>
+            ))}
+          </div>
+          <div className="ed-add-conf">
+            <select aria-label="Conference" value={confPick} onChange={(e) => setConfPick(e.target.value)}>
+              <option value="">Pick a conference…</option>
+              {conferencesOf(sportById(confSport)).map((l) => (
+                <option key={l.id} value={l.id} disabled={isConfFav(confSport, l.id)}>
+                  {l.label}
+                  {isConfFav(confSport, l.id) ? ' (following)' : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn primary"
+              disabled={!confPick}
+              onClick={() => {
+                const l = conferencesOf(sportById(confSport)).find((x) => x.id === confPick)
+                if (l && !isConfFav(confSport, l.id)) toggleConf(confSport, l)
+                setConfPick('')
+              }}
+            >
+              + Add
+            </button>
+          </div>
         </section>
 
         <button className="btn ed-done" onClick={close}>

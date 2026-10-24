@@ -29,7 +29,7 @@ function summarize(games) {
 }
 
 function Body({ sport, open }) {
-  const { data: team, error, loading, refresh } = useData(() => fetchTeam(sport, open.id), [sport.id, open.id])
+  const { data: loaded, error, loading, refresh } = useData(() => fetchTeam(sport, open.id), [sport.id, open.id])
   const { isFav, toggle } = useFavorites()
   const [tab, setTab] = useState('overview')
   const [player, setPlayer] = useState(null)
@@ -47,6 +47,7 @@ function Body({ sport, open }) {
       </>
     )
   if (error) return <ErrorBox error={error} onRetry={refresh} />
+  const team = loaded.limited ? { ...loaded, name: open.name, logo: open.logo } : loaded
 
   const s = summarize(team.games)
   const overall = team.records.find((r) => r.type === 'total') ?? team.records[0]
@@ -127,6 +128,9 @@ function Body({ sport, open }) {
         <Roster sport={sport} teamId={team.id} onPlayer={setPlayer} />
       ) : (
         <>
+      {team.limited && (
+        <p className="muted">ESPN doesn't publish team schedules or stats for college {sport.name.toLowerCase()}.</p>
+      )}
 
       {s.form.length > 0 && (
         <div className="tc-form">

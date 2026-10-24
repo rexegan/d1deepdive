@@ -89,11 +89,7 @@ export function useFavorites() {
     return () => listeners.delete(fn)
   }, [])
 
-  const toggle = useCallback((sport, team) => {
-    const key = `${sport}:${team.id}`
-    const next = { ...favs }
-    if (next[key]) delete next[key]
-    else next[key] = { sport, id: team.id, name: team.name, logo: team.logo }
+  const save = (next) => {
     favs = next
     try {
       localStorage.setItem(FAV_KEY, JSON.stringify(next))
@@ -101,8 +97,35 @@ export function useFavorites() {
       // storage blocked; favorites last for this visit only
     }
     listeners.forEach((fn) => fn())
+  }
+
+  const toggle = useCallback((sport, team) => {
+    const key = `${sport}:${team.id}`
+    const next = { ...favs }
+    if (next[key]) delete next[key]
+    else next[key] = { sport, id: team.id, name: team.name, logo: team.logo }
+    save(next)
+  }, [])
+
+  // Conferences share the store under a 'conf:' prefix.
+  const toggleConf = useCallback((sport, league) => {
+    const key = `conf:${sport}:${league.id}`
+    const next = { ...favs }
+    if (next[key]) delete next[key]
+    else next[key] = { kind: 'conf', sport, id: league.id, label: league.label }
+    save(next)
   }, [])
 
   const isFav = useCallback((sport, id) => !!favs[`${sport}:${id}`], [])
-  return { favorites: favs, list: Object.values(favs), isFav, toggle }
+  const isConfFav = useCallback((sport, id) => !!favs[`conf:${sport}:${id}`], [])
+  const all = Object.values(favs)
+  return {
+    favorites: favs,
+    list: all.filter((f) => f.kind !== 'conf'),
+    conferences: all.filter((f) => f.kind === 'conf'),
+    isFav,
+    toggle,
+    isConfFav,
+    toggleConf,
+  }
 }

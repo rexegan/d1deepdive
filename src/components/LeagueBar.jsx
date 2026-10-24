@@ -1,6 +1,11 @@
 // Shared football league picker: quick tabs, a dropdown of every league, and
 // team search on the far right. Used by Scores, Rankings and Standings.
+import { useFavorites } from '../hooks.js'
+
 export default function LeagueBar({ sport, league, onLeague, query, onQuery }) {
+  const { isConfFav, toggleConf } = useFavorites()
+  const current = sport.leagues.find((l) => l.id === league)
+  const isConf = current && current.section && !/\(All\)|Division I{1,3}$/.test(current.label)
   const sections = [...new Set(sport.leagues.map((l) => l.section))]
   const option = (l) => (
     <option key={l.id} value={l.id}>
@@ -28,6 +33,15 @@ export default function LeagueBar({ sport, league, onLeague, query, onQuery }) {
           )
         })}
       </select>
+      {isConf && (
+        <button
+          className={`btn follow-conf${isConfFav(sport.id, league) ? ' on' : ''}`}
+          onClick={() => toggleConf(sport.id, current)}
+          title={isConfFav(sport.id, league) ? 'Unfollow conference' : 'Follow conference'}
+        >
+          {isConfFav(sport.id, league) ? '★ Following' : '☆ Follow'} {current.label}
+        </button>
+      )}
       <SearchBox value={query} onChange={onQuery} />
     </div>
   )

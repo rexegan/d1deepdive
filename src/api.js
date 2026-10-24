@@ -60,6 +60,43 @@ export const SPORTS = [
     icon: '🏀',
     path: 'basketball/mens-college-basketball',
     divisions: [{ id: '50', label: 'Division I' }],
+    quickLeagues: ['top25', '8', '7', '21', '23'],
+    leagues: [
+      { id: 'top25', label: 'Top 25', section: '' },
+      { id: '50', label: 'Division I (All)', section: 'Division I' },
+      { id: '2', label: 'ACC', section: 'Division I' },
+      { id: '1', label: 'America East', section: 'Division I' },
+      { id: '62', label: 'American', section: 'Division I' },
+      { id: '46', label: 'ASUN', section: 'Division I' },
+      { id: '3', label: 'Atlantic 10', section: 'Division I' },
+      { id: '8', label: 'Big 12', section: 'Division I' },
+      { id: '4', label: 'Big East', section: 'Division I' },
+      { id: '5', label: 'Big Sky', section: 'Division I' },
+      { id: '6', label: 'Big South', section: 'Division I' },
+      { id: '7', label: 'Big Ten', section: 'Division I' },
+      { id: '9', label: 'Big West', section: 'Division I' },
+      { id: '10', label: 'CAA', section: 'Division I' },
+      { id: '11', label: 'Conference USA', section: 'Division I' },
+      { id: '45', label: 'Horizon League', section: 'Division I' },
+      { id: '12', label: 'Ivy League', section: 'Division I' },
+      { id: '14', label: 'MAC', section: 'Division I' },
+      { id: '16', label: 'MEAC', section: 'Division I' },
+      { id: '13', label: 'Metro Atlantic (MAAC)', section: 'Division I' },
+      { id: '18', label: 'Missouri Valley', section: 'Division I' },
+      { id: '44', label: 'Mountain West', section: 'Division I' },
+      { id: '19', label: 'NEC', section: 'Division I' },
+      { id: '20', label: 'OVC', section: 'Division I' },
+      { id: '21', label: 'Pac-12', section: 'Division I' },
+      { id: '22', label: 'Patriot League', section: 'Division I' },
+      { id: '23', label: 'SEC', section: 'Division I' },
+      { id: '24', label: 'Southern', section: 'Division I' },
+      { id: '25', label: 'Southland', section: 'Division I' },
+      { id: '49', label: 'Summit League', section: 'Division I' },
+      { id: '27', label: 'Sun Belt', section: 'Division I' },
+      { id: '26', label: 'SWAC', section: 'Division I' },
+      { id: '30', label: 'UAC', section: 'Division I' },
+      { id: '29', label: 'WCC', section: 'Division I' },
+    ],
   },
   {
     id: 'wbb',
@@ -68,6 +105,43 @@ export const SPORTS = [
     icon: '🏀',
     path: 'basketball/womens-college-basketball',
     divisions: [{ id: '50', label: 'Division I' }],
+    quickLeagues: ['top25', '8', '7', '21', '23'],
+    leagues: [
+      { id: 'top25', label: 'Top 25', section: '' },
+      { id: '50', label: 'Division I (All)', section: 'Division I' },
+      { id: '2', label: 'ACC', section: 'Division I' },
+      { id: '1', label: 'America East', section: 'Division I' },
+      { id: '62', label: 'American', section: 'Division I' },
+      { id: '46', label: 'ASUN', section: 'Division I' },
+      { id: '3', label: 'Atlantic 10', section: 'Division I' },
+      { id: '8', label: 'Big 12', section: 'Division I' },
+      { id: '4', label: 'Big East', section: 'Division I' },
+      { id: '5', label: 'Big Sky', section: 'Division I' },
+      { id: '6', label: 'Big South', section: 'Division I' },
+      { id: '7', label: 'Big Ten', section: 'Division I' },
+      { id: '9', label: 'Big West', section: 'Division I' },
+      { id: '10', label: 'CAA', section: 'Division I' },
+      { id: '11', label: 'Conference USA', section: 'Division I' },
+      { id: '45', label: 'Horizon League', section: 'Division I' },
+      { id: '12', label: 'Ivy League', section: 'Division I' },
+      { id: '14', label: 'MAC', section: 'Division I' },
+      { id: '16', label: 'MEAC', section: 'Division I' },
+      { id: '13', label: 'Metro Atlantic (MAAC)', section: 'Division I' },
+      { id: '18', label: 'Missouri Valley', section: 'Division I' },
+      { id: '44', label: 'Mountain West', section: 'Division I' },
+      { id: '19', label: 'NEC', section: 'Division I' },
+      { id: '20', label: 'OVC', section: 'Division I' },
+      { id: '21', label: 'Pac-12', section: 'Division I' },
+      { id: '22', label: 'Patriot League', section: 'Division I' },
+      { id: '23', label: 'SEC', section: 'Division I' },
+      { id: '24', label: 'Southern', section: 'Division I' },
+      { id: '25', label: 'Southland', section: 'Division I' },
+      { id: '47', label: 'Summit League', section: 'Division I' },
+      { id: '27', label: 'Sun Belt', section: 'Division I' },
+      { id: '26', label: 'SWAC', section: 'Division I' },
+      { id: '30', label: 'UAC', section: 'Division I' },
+      { id: '29', label: 'WCC', section: 'Division I' },
+    ],
   },
   {
     id: 'bsb',
@@ -76,6 +150,47 @@ export const SPORTS = [
     icon: '⚾',
     path: 'baseball/college-baseball',
     divisions: [],
+    // ESPN has no conference data for college baseball, so conference
+    // membership is borrowed from men's basketball (ESPN team ids are shared).
+    confFrom: 'mbb',
+    noRankings: true,
+    quickLeagues: ['top25', '8', '7', '21', '23'],
+    leagues: [
+      { id: 'top25', label: 'Top 25', section: '' },
+      { id: 'all', label: 'Division I (All)', section: 'Division I' },
+      { id: '2', label: 'ACC', section: 'Division I' },
+      { id: '1', label: 'America East', section: 'Division I' },
+      { id: '62', label: 'American', section: 'Division I' },
+      { id: '46', label: 'ASUN', section: 'Division I' },
+      { id: '3', label: 'Atlantic 10', section: 'Division I' },
+      { id: '8', label: 'Big 12', section: 'Division I' },
+      { id: '4', label: 'Big East', section: 'Division I' },
+      { id: '5', label: 'Big Sky', section: 'Division I' },
+      { id: '6', label: 'Big South', section: 'Division I' },
+      { id: '7', label: 'Big Ten', section: 'Division I' },
+      { id: '9', label: 'Big West', section: 'Division I' },
+      { id: '10', label: 'CAA', section: 'Division I' },
+      { id: '11', label: 'Conference USA', section: 'Division I' },
+      { id: '45', label: 'Horizon League', section: 'Division I' },
+      { id: '12', label: 'Ivy League', section: 'Division I' },
+      { id: '14', label: 'MAC', section: 'Division I' },
+      { id: '16', label: 'MEAC', section: 'Division I' },
+      { id: '13', label: 'Metro Atlantic (MAAC)', section: 'Division I' },
+      { id: '18', label: 'Missouri Valley', section: 'Division I' },
+      { id: '44', label: 'Mountain West', section: 'Division I' },
+      { id: '19', label: 'NEC', section: 'Division I' },
+      { id: '20', label: 'OVC', section: 'Division I' },
+      { id: '21', label: 'Pac-12', section: 'Division I' },
+      { id: '22', label: 'Patriot League', section: 'Division I' },
+      { id: '23', label: 'SEC', section: 'Division I' },
+      { id: '24', label: 'Southern', section: 'Division I' },
+      { id: '25', label: 'Southland', section: 'Division I' },
+      { id: '49', label: 'Summit League', section: 'Division I' },
+      { id: '27', label: 'Sun Belt', section: 'Division I' },
+      { id: '26', label: 'SWAC', section: 'Division I' },
+      { id: '30', label: 'UAC', section: 'Division I' },
+      { id: '29', label: 'WCC', section: 'Division I' },
+    ],
   },
   {
     id: 'sb',
@@ -84,35 +199,85 @@ export const SPORTS = [
     icon: '🥎',
     path: 'baseball/college-softball',
     divisions: [],
+    confFrom: 'wbb',
+    noRankings: true,
+    quickLeagues: ['top25', '8', '7', '21', '23'],
+    leagues: [
+      { id: 'top25', label: 'Top 25', section: '' },
+      { id: 'all', label: 'Division I (All)', section: 'Division I' },
+      { id: '2', label: 'ACC', section: 'Division I' },
+      { id: '1', label: 'America East', section: 'Division I' },
+      { id: '62', label: 'American', section: 'Division I' },
+      { id: '46', label: 'ASUN', section: 'Division I' },
+      { id: '3', label: 'Atlantic 10', section: 'Division I' },
+      { id: '8', label: 'Big 12', section: 'Division I' },
+      { id: '4', label: 'Big East', section: 'Division I' },
+      { id: '5', label: 'Big Sky', section: 'Division I' },
+      { id: '6', label: 'Big South', section: 'Division I' },
+      { id: '7', label: 'Big Ten', section: 'Division I' },
+      { id: '9', label: 'Big West', section: 'Division I' },
+      { id: '10', label: 'CAA', section: 'Division I' },
+      { id: '11', label: 'Conference USA', section: 'Division I' },
+      { id: '45', label: 'Horizon League', section: 'Division I' },
+      { id: '12', label: 'Ivy League', section: 'Division I' },
+      { id: '14', label: 'MAC', section: 'Division I' },
+      { id: '16', label: 'MEAC', section: 'Division I' },
+      { id: '13', label: 'Metro Atlantic (MAAC)', section: 'Division I' },
+      { id: '18', label: 'Missouri Valley', section: 'Division I' },
+      { id: '44', label: 'Mountain West', section: 'Division I' },
+      { id: '19', label: 'NEC', section: 'Division I' },
+      { id: '20', label: 'OVC', section: 'Division I' },
+      { id: '21', label: 'Pac-12', section: 'Division I' },
+      { id: '22', label: 'Patriot League', section: 'Division I' },
+      { id: '23', label: 'SEC', section: 'Division I' },
+      { id: '24', label: 'Southern', section: 'Division I' },
+      { id: '25', label: 'Southland', section: 'Division I' },
+      { id: '47', label: 'Summit League', section: 'Division I' },
+      { id: '27', label: 'Sun Belt', section: 'Division I' },
+      { id: '26', label: 'SWAC', section: 'Division I' },
+      { id: '30', label: 'UAC', section: 'Division I' },
+      { id: '29', label: 'WCC', section: 'Division I' },
+    ],
   },
 ]
 
 export const sportById = (id) => SPORTS.find((s) => s.id === id)
 
-const SECTION_DIVISION = { FBS: '80', FCS: '81' }
-const DIVISION_IDS = new Set(['80', '81', '35', '36'])
+const DIVISION_IDS = new Set(['80', '81', '35', '36', '50', 'all'])
+const SECTION_DIVISION = { FBS: '80', FCS: '81', 'Division I': '50' }
 
 /**
  * Resolve a league picker id ('top25', a division or a conference) into
- * { id, label, section, division, conference, top25 }.
+ * { id, label, section, division, conference, top25 }. division is the ESPN
+ * group to query (undefined = the sport's default feed).
  */
 export function leagueInfo(sport, id) {
   const l = sport.leagues?.find((x) => x.id === id) ?? sport.leagues?.[0]
   if (!l) return null
   const top25 = l.id === 'top25'
   const isDivision = top25 || DIVISION_IDS.has(l.id)
-  return {
-    ...l,
-    top25,
-    division: top25 ? '80' : isDivision ? l.id : SECTION_DIVISION[l.section],
-    conference: isDivision ? null : l.id,
-  }
+  let division = top25 ? sport.divisions[0]?.id : isDivision ? l.id : SECTION_DIVISION[l.section]
+  if (sport.confFrom || division === 'all') division = undefined
+  return { ...l, top25, division, conference: isDivision ? null : l.id }
+}
+
+/** The conferences a sport's picker offers (for following). */
+export const conferencesOf = (sport) =>
+  (sport.leagues ?? []).filter((l) => l.id !== 'top25' && !DIVISION_IDS.has(l.id))
+
+/** Team ids in a conference, from standings (or the borrowed sport's standings). */
+export async function conferenceMembers(sport, league) {
+  const source = sport.confFrom ? sportById(sport.confFrom) : sport
+  // Football standings are split by division; other sports return all of D1.
+  const division = sport.byWeek ? league.division : undefined
+  const groups = await fetchStandings(source, division)
+  return new Set(groups.filter((g) => groupMatches(g, league)).flatMap((g) => g.entries.map((e) => String(e.team.id))))
 }
 
 /** Does a standings group correspond to this league picker entry? */
 export function groupMatches(group, league) {
   if (String(group.id) === league.id) return true
-  const label = league.label.toLowerCase()
+  const label = league.label.toLowerCase().replace(/ \(.*\)$/, '')
   const name = group.name.toLowerCase()
   return group.abbr?.toLowerCase() === label || name === label || name.startsWith(`${label} · `)
 }
@@ -451,7 +616,12 @@ export async function fetchTeam(sport, id) {
     getJSON(`${base}/statistics`),
     fetchRankings(sport),
   ])
-  if (schedule.status === 'rejected') throw schedule.reason
+  if (schedule.status === 'rejected') {
+    // ESPN has no team pages for some sports (college baseball, softball).
+    if (/ 40[04]$/.test(schedule.reason?.message ?? ''))
+      return { id, limited: true, records: [], games: [], stats: [], rank: null, standing: '', link: null }
+    throw schedule.reason
+  }
   const t = schedule.value.team ?? stats.value?.team ?? {}
   const games = (schedule.value.events ?? []).map((e) => normalizeScheduleEvent(e, t.id ?? id))
   const done = games.filter((g) => g.result)
