@@ -76,22 +76,6 @@ function Body({ sport, open }) {
         </button>
       </div>
 
-      <nav className="tc-tabs">
-        <button className={tab === 'overview' ? 'on' : ''} onClick={() => setTab('overview')}>
-          Overview
-        </button>
-        <button className={tab === 'roster' ? 'on' : ''} onClick={() => setTab('roster')}>
-          Roster
-        </button>
-        <a href={schoolSiteUrl(team.name)} target="_blank" rel="noreferrer">
-          School website ↗
-        </a>
-      </nav>
-
-      {tab === 'roster' ? (
-        <Roster sport={sport} teamId={team.id} onPlayer={setPlayer} />
-      ) : (
-        <>
       <div className="tc-stats">
         <div className="tc-big">
           <span className="label">Record</span>
@@ -123,7 +107,26 @@ function Body({ sport, open }) {
             <strong>{s.pointsAgainst}</strong>
           </div>
         )}
+        {team.link && (
+          <a className="tc-action" href={team.link} target="_blank" rel="noreferrer">
+            Full Team Page
+          </a>
+        )}
+        <a className="tc-action" href={schoolSiteUrl(team.name)} target="_blank" rel="noreferrer">
+          School's Website
+        </a>
+        <button
+          className={`tc-action${tab === 'roster' ? ' on' : ''}`}
+          onClick={() => setTab(tab === 'roster' ? 'overview' : 'roster')}
+        >
+          {tab === 'roster' ? 'Back to Overview' : 'Roster'}
+        </button>
       </div>
+
+      {tab === 'roster' ? (
+        <Roster sport={sport} teamId={team.id} onPlayer={setPlayer} />
+      ) : (
+        <>
 
       {s.form.length > 0 && (
         <div className="tc-form">
@@ -193,13 +196,6 @@ function Body({ sport, open }) {
         </details>
       ))}
 
-      {team.link && (
-        <p className="tc-foot">
-          <a href={team.link} target="_blank" rel="noreferrer" className="more">
-            Full team page on ESPN ↗
-          </a>
-        </p>
-      )}
         </>
       )}
     </>
