@@ -9,19 +9,20 @@ jobs:
       - run: |
           set +e
           S=https://site.api.espn.com/apis/site/v2/sports
-          W=https://site.web.api.espn.com/apis/common/v3/sports
+          V=https://site.api.espn.com/apis/v2/sports
           C=https://sports.core.api.espn.com/v2/sports
-          hdr() { echo "=== $1"; curl -s -o /tmp/b -D /tmp/h -H "Origin: https://rexegan.github.io" "$1"; head -1 /tmp/h; grep -i "access-control-allow-origin" /tmp/h || echo "NO CORS"; }
-          for p in football/college-football basketball/mens-college-basketball basketball/womens-college-basketball baseball/college-baseball baseball/college-softball; do hdr "$S/$p/teams/239/roster"; jq -c '{keys: keys, a: (.athletes|length), first: (.athletes[0] | if type=="object" and has("items") then {position, n: (.items|length), item: (.items[0] | {id, fullName, jersey, position: .position.abbreviation, headshot, height: .displayHeight, weight: .displayWeight, experience, birthPlace})} else {id, fullName, jersey, position: .position?.abbreviation, headshot, displayHeight, displayWeight, experience, birthPlace} end)}' /tmp/b | head -c 900; echo; done
-          A=$(curl -s "$S/football/college-football/teams/239/roster" | jq -r '[.athletes[]?.items[]?.id][0]')
-          echo "athlete $A"
-          hdr "$W/football/college-football/athletes/$A"; jq -c '.athlete | keys' /tmp/b | head -c 900; echo
-          hdr "$W/football/college-football/athletes/$A/overview"; jq -c 'keys, (.statistics|keys?), (.statistics.labels?), (.statistics.splits?[0])' /tmp/b | head -c 1200; echo
-          hdr "$W/football/college-football/athletes/$A/stats"; jq -c 'keys, (.categories?[0] | {name, displayName, labels, names, statistics: .statistics?[0]})' /tmp/b | head -c 1500; echo
-          hdr "$W/football/college-football/athletes/$A/gamelog"; jq -c 'keys' /tmp/b | head -c 300; echo
-          hdr "$S/football/college-football/athletes/$A"; head -c 200 /tmp/b; echo
-          hdr "$C/football/leagues/college-football/athletes/$A"; jq -c 'keys' /tmp/b | head -c 600; echo
-          echo "=== athlete detail"; curl -s "$W/football/college-football/athletes/$A" | jq -c '.athlete | {displayName, position: .position.displayName, jersey, displayHeight, displayWeight, displayExperience: .displayExperience, birthPlace, displayBirthPlace, headshot, team: .team.displayName, statsSummary}' | head -c 1500
-          B=$(curl -s "$S/basketball/mens-college-basketball/teams/239/roster" | jq -r '.athletes[0].id')
-          hdr "$W/basketball/mens-college-basketball/athletes/$B/overview"; jq -c 'keys' /tmp/b | head -c 300; echo
-          hdr "$W/basketball/mens-college-basketball/athletes/$B"; jq -c '.athlete.statsSummary' /tmp/b | head -c 600; echo
+          for p in basketball/mens-college-basketball basketball/womens-college-basketball; do
+            echo "=== $p conf"; curl -s "$V/$p/standings" | jq -c '[.children[] | [.id, .abbreviation, .name]]'
+            echo "=== $p sb groups=8 (SEC?)"; curl -s "$S/$p/scoreboard?groups=8&dates=20260214" | jq -c '[.events[].competitions[0].competitors[].team.conferenceId] | unique'
+          done
+          for p in baseball/college-baseball baseball/college-softball; do
+            sp=${p%%/*}; lg=${p##*/}
+            echo "=== $p conferenceIds"; curl -s "$S/$p/scoreboard?dates=20260418&limit=1000" | jq -c '[.events[].competitions[0].competitors[].team.conferenceId] | unique, (.events|length)'
+            echo "=== $p groups=50"; curl -s "$S/$p/scoreboard?dates=20260418&limit=1000&groups=50" | jq -c '(.events|length)'
+            echo "=== $p core groups"; curl -s "$C/$sp/leagues/$lg/seasons/2026/types/2/groups/50/children?limit=100" | jq -c '.count, [.items[]."$ref"] | .[0:3]?'
+            echo "=== $p core groups2"; curl -s "$C/$sp/leagues/$lg/groups?limit=100" | jq -c '.count, .items[0:2]'
+            echo "=== $p standings group=8"; curl -s "$V/$p/standings?group=8" | jq -c '{name, n: (.children|length), e: (.standings.entries|length), c0: .children[0].name}'
+            echo "=== $p standings level"; curl -s "$V/$p/standings?level=3" | jq -c '{n: (.children|length), names: [.children[]?.name][0:40]}'
+            echo "=== $p rankings"; curl -s "$S/$p/rankings" | head -c 300; echo
+          done
+          echo "=== core mbb children"; curl -s "$C/basketball/leagues/mens-college-basketball/seasons/2026/types/2/groups/50/children?limit=100" | jq -c '.count'
