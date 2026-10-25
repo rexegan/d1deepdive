@@ -8,15 +8,16 @@ jobs:
     steps:
       - run: |
           set +e
-          S=https://site.api.espn.com/apis/site/v2/sports
-          for p in baseball/college-baseball baseball/college-softball; do
-            echo "=== $p raw"; curl -s "$S/$p/scoreboard?dates=20260418" | head -c 200; echo
-            echo "=== $p conf ids"; curl -s "$S/$p/scoreboard?dates=20260418" | jq -c '(.events|length), ([.events[]?.competitions[0].competitors[].team.conferenceId] | unique)'
-            for g in 50 8 23 2 7 26; do echo "groups=$g"; curl -s "$S/$p/scoreboard?dates=20260418&groups=$g" | jq -c '(.events|length)'; done
-            echo "=== $p team sched"; curl -s "$S/$p/teams/239/schedule" | jq -c '.team.groups, .team.standingSummary, (.events|length)'
-            echo "=== $p team stats"; curl -s -o /dev/null -w "%{http_code}\n" "$S/$p/teams/239/statistics"
-            echo "=== $p standings sample"; curl -s "https://site.api.espn.com/apis/v2/sports/$p/standings" | jq -c '.children[0].standings.entries[0:3][] | {t: .team.displayName, id: .team.id}'
-          done
-          echo "=== mbb pac12 21"; curl -s "$S/basketball/mens-college-basketball/scoreboard?dates=20260214&groups=21" | jq -c '(.events|length)'
-          echo "=== mbb rankings names"; curl -s "$S/basketball/mens-college-basketball/rankings" | jq -c '[.rankings[].name]'
-          echo "=== mbb team sched groups"; curl -s "$S/basketball/mens-college-basketball/teams/239/schedule" | jq -c '.team.groups, .team.standingSummary'
+          C=https://sports.core.api.espn.com/v2/sports
+          hdr() { echo "=== $1"; curl -sL -o /tmp/b -D /tmp/h -H "Origin: https://rexegan.github.io" "$1"; grep -E "^HTTP" /tmp/h | tail -1; grep -i "access-control-allow-origin" /tmp/h || echo "NO CORS"; }
+          hdr "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=2025"; jq -c 'keys' /tmp/b | head -c 400; echo
+          jq -c '.picks[0]?, (.picks|length)' /tmp/b | head -c 1500; echo
+          hdr "https://site.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=2025"; head -c 300 /tmp/b; echo
+          hdr "$C/football/leagues/nfl/seasons/2025/draft/rounds"; jq -c '.count, (.items[0].picks[0])' /tmp/b | head -c 1200; echo
+          A=$(jq -r '.items[0].picks[0].athlete."$ref"' /tmp/b); echo "athlete ref $A"
+          curl -sL "$A" | jq -c '{displayName, college: .college, position: .position.abbreviation}' | head -c 600; echo
+          hdr "$C/football/leagues/college-football/seasons/2026/teams/333/coaches"; jq -c '.' /tmp/b | head -c 800; echo
+          R=$(jq -r '.items[0]."$ref"' /tmp/b); curl -sL "$R" | jq -c '{firstName, lastName, experience, headshot, dateOfBirth, birthPlace, college: .college, careerRecords: (.careerRecords."$ref"), keys: keys}' | head -c 1200; echo
+          hdr "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/333/coaches"; head -c 300 /tmp/b; echo
+          hdr "$C/football/leagues/nfl/seasons/2025/draft/athletes?limit=300"; jq -c '.count' /tmp/b
+          hdr "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=2025&college=333"; jq -c '(.picks|length)' /tmp/b
