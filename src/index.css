@@ -1485,3 +1485,19 @@ table.standings .left {
   display: inline-grid;
   margin-top: 4px;
 }
+
+.upset-head {
+  font-size: 0.88rem;
+  margin: 0 0 10px;
+}
+
+.league-bar .seg {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.league-bar .seg button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}

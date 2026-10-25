@@ -241,9 +241,16 @@ export const SPORTS = [
   },
 ]
 
+// Every league picker starts with Yesterday's Upsets.
+for (const s of SPORTS) {
+  if (!s.leagues) continue
+  s.leagues.unshift({ id: 'upsets', label: "Yesterday's Upsets", section: '' })
+  s.quickLeagues.unshift('upsets')
+}
+
 export const sportById = (id) => SPORTS.find((s) => s.id === id)
 
-const DIVISION_IDS = new Set(['80', '81', '35', '36', '50', 'all'])
+const DIVISION_IDS = new Set(['upsets', '80', '81', '35', '36', '50', 'all'])
 const SECTION_DIVISION = { FBS: '80', FCS: '81', 'Division I': '50' }
 
 /**
@@ -252,13 +259,16 @@ const SECTION_DIVISION = { FBS: '80', FCS: '81', 'Division I': '50' }
  * group to query (undefined = the sport's default feed).
  */
 export function leagueInfo(sport, id) {
-  const l = sport.leagues?.find((x) => x.id === id) ?? sport.leagues?.[0]
+  const l =
+    sport.leagues?.find((x) => x.id === id) ?? sport.leagues?.find((x) => x.id === 'top25') ?? sport.leagues?.[0]
   if (!l) return null
-  const top25 = l.id === 'top25'
+  const upsets = l.id === 'upsets'
+  // Upsets behave like Top 25 on Rankings and Standings.
+  const top25 = l.id === 'top25' || upsets
   const isDivision = top25 || DIVISION_IDS.has(l.id)
   let division = top25 ? sport.divisions[0]?.id : isDivision ? l.id : SECTION_DIVISION[l.section]
   if (sport.confFrom || division === 'all') division = undefined
-  return { ...l, top25, division, conference: isDivision ? null : l.id }
+  return { ...l, top25, upsets, division, conference: isDivision ? null : l.id }
 }
 
 /** The conferences a sport's picker offers (for following). */
@@ -327,7 +337,7 @@ export const todayKey = () => toKey(new Date())
  */
 export async function fetchScoreboard(sport, opts = {}, fetchOpts) {
   const q = new URLSearchParams({ limit: '1000' })
-  if (sport.byWeek) {
+  if (sport.byWeek && !opts.date) {
     if (opts.week) q.set('week', opts.week)
     if (opts.seasonType) q.set('seasontype', opts.seasonType)
   } else if (opts.date) {
@@ -845,4 +855,13 @@ export async function fetchHeadCoach(sport, teamId, seasonYear) {
     // Only trust the Wikipedia page if it's about a coach.
     wiki: wiki && /coach/i.test(`${wiki.description} ${wiki.extract}`) ? wiki : null,
   }
+}
+
+/** Winner was ranked lower than (or unranked against) the team it beat. */
+export function isUpset(g) {
+  if (g.state !== 'post' || !g.home || !g.away) return false
+  const winner = g.home.winner ? g.home : g.away.winner ? g.away : null
+  if (!winner) return false
+  const loser = winner === g.home ? g.away : g.home
+  return !!loser.rank && (winner.rank ?? 99) > loser.rank
 }

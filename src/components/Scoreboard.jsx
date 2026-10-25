@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { conferenceMembers, fetchScoreboard, fromKey, leagueInfo, shiftKey, todayKey } from '../api.js'
+import { conferenceMembers, fetchScoreboard, fromKey, isUpset, leagueInfo, shiftKey, toKey, todayKey } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
 import { EditTeamsButton } from './MyTeamsEditor.jsx'
@@ -23,11 +23,30 @@ function dayLabel(key) {
   return fromKey(key).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
+// Yesterday's completed games where the winner was ranked lower. Football
+// rarely plays on a given weekday, so with no games yesterday it falls back to
+// the most recent game day this week.
+async function loadUpsets(sport, division, o) {
+  const yesterday = shiftKey(todayKey(), -1)
+  let board = await fetchScoreboard(sport, { date: yesterday, division }, o)
+  let day = yesterday
+  if (sport.byWeek && !board.events.some((g) => g.state === 'post')) {
+    const week = await fetchScoreboard(sport, { division }, o)
+    const done = week.events.filter((g) => g.state === 'post')
+    if (done.length) {
+      day = done.map((g) => toKey(new Date(g.date))).sort().at(-1)
+      board = { ...week, events: done.filter((g) => toKey(new Date(g.date)) === day) }
+    }
+  }
+  return { ...board, upsetDay: day, played: board.events.filter((g) => g.state === 'post').length, events: board.events.filter(isUpset) }
+}
+
 export default function Scoreboard({ sport, params }) {
   const date = params.date ?? todayKey()
   // Sports with a league picker use ?g=<group>; 'top25' is FBS filtered to ranked teams.
   const league = leagueInfo(sport, params.g)
-  const top25Only = !!league?.top25
+  const upsets = !!league?.upsets
+  const top25Only = !!league?.top25 && !upsets
   // Conference filtering is server-side via ESPN groups, except for sports
   // that borrow conference membership (filtered client-side below).
   const clientConf = !!(sport.confFrom && league?.conference)
@@ -43,6 +62,7 @@ export default function Scoreboard({ sport, params }) {
 
   const { data, error, loading, updated, polling, refresh } = useData(
     async (o) => {
+      if (upsets) return loadUpsets(sport, division, o)
       const [board, members] = await Promise.all([
         fetchScoreboard(sport, sport.byWeek ? { week, seasonType: st, division } : { date, division }, o),
         clientConf ? conferenceMembers(sport, league) : null,
@@ -97,7 +117,7 @@ export default function Scoreboard({ sport, params }) {
 
   return (
     <section>
-      <div className="toolbar">
+      <div className="toolbar" style={upsets ? { display: 'none' } : undefined}>
         {!sport.leagues && sport.divisions.length > 1 && (
           <div className="seg">
             {sport.divisions.map((d) => (
@@ -193,9 +213,23 @@ export default function Scoreboard({ sport, params }) {
       {loading && <Loading label="Loading games…" />}
       {error && !data && <ErrorBox error={error} onRetry={refresh} />}
 
-      {data && !data.events.length && (
+      {upsets && data?.upsetDay && data.played > 0 && (
+        <p className="muted upset-head">
+          {data.upsetDay === shiftKey(todayKey(), -1) ? 'Yesterday' : `No games yesterday, so showing ${dayLabel(data.upsetDay)}`}
+          : {data.events.length} upset{data.events.length === 1 ? '' : 's'} in {data.played} final{data.played === 1 ? '' : 's'}. An
+          upset is a win over a higher-ranked team.
+        </p>
+      )}
+
+      {data?.upsetDay && !data.events.length && upsets && data.played > 0 && (
         <div className="state">
-          <p>No {sport.name.toLowerCase()} games {sport.byWeek ? 'this week' : `on ${dayLabel(date).toLowerCase()}`}.</p>
+          <p>No upsets. The favorites held serve.</p>
+        </div>
+      )}
+
+      {data && !data.events.length && !(upsets && data.played > 0) && (
+        <div className="state">
+          <p>No {sport.name.toLowerCase()} games {upsets ? 'yesterday' : sport.byWeek ? 'this week' : `on ${dayLabel(date).toLowerCase()}`}.</p>
           {data.seasonStart && new Date(data.seasonStart) > new Date() && (
             <p className="muted">
               Season starts {new Date(data.seasonStart).toLocaleDateString([], { month: 'long', day: 'numeric' })}.
