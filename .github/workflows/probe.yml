@@ -9,15 +9,11 @@ jobs:
       - run: |
           set +e
           C=https://sports.core.api.espn.com/v2/sports
-          hdr() { echo "=== $1"; curl -sL -o /tmp/b -D /tmp/h -H "Origin: https://rexegan.github.io" "$1"; grep -E "^HTTP" /tmp/h | tail -1; grep -i "access-control-allow-origin" /tmp/h || echo "NO CORS"; }
-          hdr "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=2025"; jq -c 'keys' /tmp/b | head -c 400; echo
-          jq -c '.picks[0]?, (.picks|length)' /tmp/b | head -c 1500; echo
-          hdr "https://site.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=2025"; head -c 300 /tmp/b; echo
-          hdr "$C/football/leagues/nfl/seasons/2025/draft/rounds"; jq -c '.count, (.items[0].picks[0])' /tmp/b | head -c 1200; echo
-          A=$(jq -r '.items[0].picks[0].athlete."$ref"' /tmp/b); echo "athlete ref $A"
-          curl -sL "$A" | jq -c '{displayName, college: .college, position: .position.abbreviation}' | head -c 600; echo
-          hdr "$C/football/leagues/college-football/seasons/2026/teams/333/coaches"; jq -c '.' /tmp/b | head -c 800; echo
-          R=$(jq -r '.items[0]."$ref"' /tmp/b); curl -sL "$R" | jq -c '{firstName, lastName, experience, headshot, dateOfBirth, birthPlace, college: .college, careerRecords: (.careerRecords."$ref"), keys: keys}' | head -c 1200; echo
-          hdr "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams/333/coaches"; head -c 300 /tmp/b; echo
-          hdr "$C/football/leagues/nfl/seasons/2025/draft/athletes?limit=300"; jq -c '.count' /tmp/b
-          hdr "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=2025&college=333"; jq -c '(.picks|length)' /tmp/b
+          for y in 2026 2015 2005; do echo "=== draft $y"; curl -s "https://site.api.espn.com/apis/site/v2/sports/football/nfl/draft?season=$y" | jq -c '.year, (.picks|length), (.picks[0] | {round, pick, overall, teamId, n: .athlete.displayName, pos: .athlete.position, t: .athlete.team}), (.teams[0] | {id, displayName, abbreviation, logo: .logos[0].href}), ([.positions[0:2][]?])' | head -c 1200; echo; done
+          echo "=== coach"; curl -sL "$C/football/leagues/college-football/seasons/2026/coaches/4608671" | jq -c '.person, .records' ; 
+          P=$(curl -sL "$C/football/leagues/college-football/seasons/2026/coaches/4608671" | jq -r '.person."$ref"'); echo "person $P"; curl -sL "$P" | jq -c 'del(.links)' | head -c 1000; echo
+          R=$(curl -sL "$C/football/leagues/college-football/seasons/2026/coaches/4608671" | jq -r '.records."$ref" // empty'); [ -n "$R" ] && curl -sL "$R" | head -c 800; echo
+          echo "=== coach2"; curl -sL "$C/football/leagues/college-football/coaches/4608671" | jq -c 'keys, .careerRecords' | head -c 800; echo
+          echo "=== wiki"; curl -s -D /tmp/h -o /tmp/b -H "Origin: https://rexegan.github.io" "https://en.wikipedia.org/api/rest_v1/page/summary/Alabama_Crimson_Tide_football"; grep -iE "^HTTP|access-control-allow-origin" /tmp/h; jq -c '{title, extract, thumb: .thumbnail.source}' /tmp/b | head -c 600; echo
+          curl -s "https://en.wikipedia.org/api/rest_v1/page/summary/Kalen_DeBoer" | jq -c '{title, description, thumb: .thumbnail.source}'
+          echo "=== mbb coach"; curl -sL "$C/basketball/leagues/mens-college-basketball/seasons/2027/teams/239/coaches" | jq -c '.count'
