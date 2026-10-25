@@ -1,6 +1,7 @@
 import TeamLogo from './TeamLogo.jsx'
 import { useFavorites } from '../hooks.js'
 import TeamName from './TeamName.jsx'
+import { isCloseGame } from '../api.js'
 
 function startTime(iso) {
   const d = new Date(iso)
@@ -48,6 +49,7 @@ export default function GameCard({ game, showSport }) {
           {game.state === 'in' && <span className="live-dot" />}
           {status}
         </span>
+        {isCloseGame(game) && <span className="close-badge">Close game</span>}
         {showSport && <span className="sport-tag">{showSport}</span>}
         {game.broadcast && <span className="tv">{game.broadcast}</span>}
       </header>

@@ -412,6 +412,8 @@ function normalizeEvent(e, sport) {
     date: e.date,
     state: type.state ?? 'pre', // pre | in | post
     detail: type.shortDetail ?? type.detail ?? '',
+    period: status.period ?? 0,
+    clock: status.clock ?? null, // seconds left in the period
     completed: !!type.completed,
     neutral: !!comp.neutralSite,
     conferenceGame: !!comp.conferenceCompetition,
@@ -864,4 +866,24 @@ export function isUpset(g) {
   if (!winner) return false
   const loser = winner === g.home ? g.away : g.home
   return !!loser.rank && (winner.rank ?? 99) > loser.rank
+}
+
+// ---------- close-game alerts ----------
+
+// When a live game counts as "close and late", per sport.
+const CLOSE = {
+  cfb: { margin: 8, late: (g) => g.period >= 4 }, // 4th quarter or OT, one score
+  mbb: { margin: 6, late: (g) => g.period > 2 || (g.period === 2 && g.clock != null && g.clock <= 300) }, // last 5 min of 2nd half or OT
+  wbb: { margin: 6, late: (g) => g.period >= 4 }, // 4th quarter or OT
+  bsb: { margin: 2, late: (g) => g.period >= 8 }, // 8th inning on
+  sb: { margin: 2, late: (g) => g.period >= 6 }, // 6th inning on (7-inning games)
+}
+
+export function isCloseGame(g) {
+  const rule = CLOSE[g.sport]
+  if (!rule || g.state !== 'in' || !g.home || !g.away) return false
+  const a = Number(g.home.score)
+  const b = Number(g.away.score)
+  if (Number.isNaN(a) || Number.isNaN(b)) return false
+  return Math.abs(a - b) <= rule.margin && rule.late(g)
 }

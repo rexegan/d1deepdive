@@ -1501,3 +1501,110 @@ table.standings .left {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ---------- close-game alerts ---------- */
+
+.close-alerts {
+  max-width: 1180px;
+  margin: 10px auto 0;
+  padding: 0 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+
+.close-alerts.active {
+  justify-content: flex-start;
+}
+
+.close-alerts.active > * {
+  position: relative;
+}
+
+.close-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  color: var(--live);
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+.close-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.close-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--live) 55%, var(--border));
+  border-radius: 999px;
+  padding: 5px 8px 5px 10px;
+  font-size: 0.85rem;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 12%, transparent);
+}
+
+.close-game .team-link {
+  font-weight: 600;
+}
+
+.close-game .more {
+  font-size: 0.78rem;
+}
+
+.close-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.notify-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.notify-btn.on {
+  color: var(--text);
+  border-color: var(--gold);
+}
+
+@media (max-width: 720px) {
+  .close-alerts {
+    padding: 0 16px;
+  }
+
+  .close-game {
+    border-radius: 12px;
+    flex-wrap: wrap;
+  }
+}
+
+.close-badge {
+  background: var(--live);
+  color: #fff;
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

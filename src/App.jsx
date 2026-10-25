@@ -6,6 +6,7 @@ import Rankings from './components/Rankings.jsx'
 import Standings from './components/Standings.jsx'
 import TeamCard from './components/TeamCard.jsx'
 import MyTeamsEditor from './components/MyTeamsEditor.jsx'
+import CloseGameAlerts from './components/CloseGameAlerts.jsx'
 
 const VIEWS = [
   { id: 'scores', label: 'Scores' },
@@ -38,6 +39,8 @@ export default function App() {
           ))}
         </nav>
       </header>
+
+      <CloseGameAlerts />
 
       <main>
         {!sport ? (
