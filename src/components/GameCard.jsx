@@ -3,9 +3,12 @@ import { useFavorites } from '../hooks.js'
 import TeamName from './TeamName.jsx'
 import { isCloseGame } from '../api.js'
 
-function startTime(iso) {
-  const d = new Date(iso)
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+// "Sat, Oct 25 · 7:30 PM" in the viewer's time zone; date only when the time isn't set yet.
+function kickoff(game) {
+  const d = new Date(game.date)
+  const day = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+  if (/TBD|TBA/i.test(game.detail)) return day
+  return `${day} · ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
 }
 
 function TeamRow({ team, sport, game }) {
@@ -36,12 +39,7 @@ function TeamRow({ team, sport, game }) {
 }
 
 export default function GameCard({ game, showSport }) {
-  const status =
-    game.state === 'pre'
-      ? /TBD|TBA/i.test(game.detail)
-        ? game.detail
-        : startTime(game.date)
-      : game.detail
+  const status = game.state === 'pre' ? 'Upcoming' : game.detail
   return (
     <article className={`game game-${game.state}`}>
       <header className="game-head">
@@ -53,6 +51,7 @@ export default function GameCard({ game, showSport }) {
         {showSport && <span className="sport-tag">{showSport}</span>}
         {game.broadcast && <span className="tv">{game.broadcast}</span>}
       </header>
+      <div className="game-when">{kickoff(game)}</div>
       <TeamRow team={game.away} sport={game.sport} game={game} />
       <TeamRow team={game.home} sport={game.sport} game={game} />
       <footer className="game-foot">
