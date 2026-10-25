@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { fetchTeam, schoolSiteUrl, sportById } from '../api.js'
 import Roster, { PlayerView } from './Roster.jsx'
+import FunFacts from './FunFacts.jsx'
+import Coaches from './Coaches.jsx'
 import { useData, useFavorites } from '../hooks.js'
 import { closeTeam, useOpenTeam } from '../team.js'
 import TeamLogo from './TeamLogo.jsx'
@@ -116,16 +118,27 @@ function Body({ sport, open }) {
         <a className="tc-action" href={schoolSiteUrl(team.name)} target="_blank" rel="noreferrer">
           School's Website
         </a>
-        <button
-          className={`tc-action${tab === 'roster' ? ' on' : ''}`}
-          onClick={() => setTab(tab === 'roster' ? 'overview' : 'roster')}
-        >
-          {tab === 'roster' ? 'Back to Overview' : 'Roster'}
-        </button>
+        {[
+          ['roster', 'Roster'],
+          ['facts', 'Fun Facts'],
+          ['coaches', 'Coaching Staff'],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            className={`tc-action${tab === id ? ' on' : ''}`}
+            onClick={() => setTab(tab === id ? 'overview' : id)}
+          >
+            {tab === id ? `‹ ${label}` : label}
+          </button>
+        ))}
       </div>
 
       {tab === 'roster' ? (
         <Roster sport={sport} teamId={team.id} onPlayer={setPlayer} />
+      ) : tab === 'facts' ? (
+        <FunFacts sport={sport} team={team} />
+      ) : tab === 'coaches' ? (
+        <Coaches sport={sport} team={team} />
       ) : (
         <>
       {team.limited && (

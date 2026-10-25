@@ -649,7 +649,9 @@ export async function fetchTeam(sport, id) {
     id: t.id ?? id,
     name: t.displayName ?? [t.location, t.name].filter(Boolean).join(' '),
     short: t.shortDisplayName ?? t.location,
+    location: t.location ?? '',
     nickname: t.name,
+    seasonYear: schedule.value.season?.year ?? null,
     abbr: t.abbreviation,
     color: t.color ? `#${t.color}` : null,
     logo: teamLogo(t),
@@ -766,4 +768,81 @@ export async function fetchAthlete(sport, id) {
 /** Official athletics site: ESPN doesn't publish it, so jump to the top search result. */
 export function schoolSiteUrl(teamName) {
   return `https://duckduckgo.com/?q=${encodeURIComponent(`\\${teamName} official athletics website`)}`
+}
+
+// ---------- fun facts & coaches ----------
+
+const https = (url) => url?.replace(/^http:/, 'https:')
+
+let draftPromise = null
+/** NFL draft picks by college, built into the site at deploy time. */
+export function fetchDraft() {
+  draftPromise ??= fetch('./data/draft.json')
+    .then((r) => (r.ok ? r.json() : { byCollege: {} }))
+    .catch(() => ({ byCollege: {} }))
+  return draftPromise
+}
+
+export async function draftPicksFor(team) {
+  const { byCollege } = await fetchDraft()
+  return (byCollege[`${team.location}|${team.nickname}`] ?? []).map(([year, round, overall, name, pos, nfl]) => ({
+    year,
+    round,
+    overall,
+    name,
+    pos,
+    nfl,
+  }))
+}
+
+/** Wikipedia page summary (CORS-enabled REST API), or null. */
+export async function fetchWiki(title) {
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replaceAll(' ', '_'))}`)
+    if (!res.ok) return null
+    const w = await res.json()
+    if (w.type === 'disambiguation') return null
+    return {
+      title: w.title,
+      description: w.description ?? '',
+      extract: w.extract ?? '',
+      image: w.originalimage?.source ?? w.thumbnail?.source ?? null,
+      thumb: w.thumbnail?.source ?? null,
+      link: w.content_urls?.desktop?.page ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
+const PROGRAM_SUFFIX = { cfb: 'football', mbb: "men's basketball", wbb: "women's basketball", bsb: 'baseball', sb: 'softball' }
+export const programWikiTitle = (sport, teamName) => `${teamName} ${PROGRAM_SUFFIX[sport.id]}`
+
+const CORE_SPORTS = 'https://sports.core.api.espn.com/v2/sports'
+
+/** Head coach from ESPN's core API (the only coach ESPN publishes), plus a Wikipedia bio. */
+export async function fetchHeadCoach(sport, teamId, seasonYear) {
+  const [sp, league] = sport.path.split('/')
+  const year = seasonYear ?? new Date().getFullYear()
+  const list = await getJSON(`${CORE_SPORTS}/${sp}/leagues/${league}/seasons/${year}/teams/${teamId}/coaches`)
+  const ref = list.items?.[0]?.$ref
+  if (!ref) return null
+  const coach = await getJSON(https(ref))
+  const person = coach.person?.$ref ? await getJSON(https(coach.person.$ref)).catch(() => coach) : coach
+  const career = person.careerRecords?.[0]?.$ref
+    ? await getJSON(https(person.careerRecords[0].$ref)).catch(() => null)
+    : null
+  const seasonRecord = coach.records?.[0]?.record?.$ref
+    ? await getJSON(https(coach.records[0].record.$ref)).catch(() => null)
+    : null
+  const name = [person.firstName ?? coach.firstName, person.lastName ?? coach.lastName].filter(Boolean).join(' ')
+  const wiki = await fetchWiki(name)
+  return {
+    name,
+    seasons: person.coachSeasons?.length ?? null,
+    career: career?.summary ?? career?.displayValue ?? null,
+    season: seasonRecord?.summary ?? seasonRecord?.displayValue ?? null,
+    // Only trust the Wikipedia page if it's about a coach.
+    wiki: wiki && /coach/i.test(`${wiki.description} ${wiki.extract}`) ? wiki : null,
+  }
 }
