@@ -5,6 +5,8 @@ import Scoreboard from './components/Scoreboard.jsx'
 import Rankings from './components/Rankings.jsx'
 import Standings from './components/Standings.jsx'
 import TeamCard from './components/TeamCard.jsx'
+import GameDetail from './components/GameDetail.jsx'
+import Leaders from './components/Leaders.jsx'
 import MyTeamsEditor from './components/MyTeamsEditor.jsx'
 import CloseGameAlerts from './components/CloseGameAlerts.jsx'
 
@@ -12,6 +14,7 @@ const VIEWS = [
   { id: 'scores', label: 'Scores' },
   { id: 'rankings', label: 'Rankings', over: 'National' },
   { id: 'standings', label: 'Standings', over: 'Conference' },
+  { id: 'leaders', label: 'Leaders', over: 'League' },
 ]
 
 export default function App() {
@@ -69,10 +72,12 @@ export default function App() {
             {view === 'scores' && <Scoreboard key={sport.id} sport={sport} params={route.params} />}
             {view === 'rankings' && <Rankings key={sport.id} sport={sport} params={route.params} />}
             {view === 'standings' && <Standings key={sport.id} sport={sport} params={route.params} />}
+            {view === 'leaders' && <Leaders key={sport.id} sport={sport} params={route.params} />}
           </>
         )}
       </main>
 
+      <GameDetail />
       <TeamCard />
       <MyTeamsEditor />
 

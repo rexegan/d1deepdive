@@ -887,3 +887,334 @@ export function isCloseGame(g) {
   if (Number.isNaN(a) || Number.isNaN(b)) return false
   return Math.abs(a - b) <= rule.margin && rule.late(g)
 }
+
+// ---------- game detail ----------
+
+const signed = (n) => (n == null || Number.isNaN(Number(n)) ? '' : Number(n) > 0 ? `+${Number(n)}` : String(Number(n)))
+const ordinal = (n) => `${n}${[, 'st', 'nd', 'rd'][(n % 100 >> 3) ^ 1 && n % 10] || 'th'}`
+const isBaseball = (sport) => sport.path.startsWith('baseball/')
+
+/** "Q3", "H2", "2OT", "Top 7th": how each sport names a period. */
+export function periodLabel(sport, n, half) {
+  if (!n) return ''
+  if (isBaseball(sport)) return half ? `${half === 'Top' ? 'Top' : 'Bot'} ${ordinal(n)}` : ordinal(n)
+  const regulation = sport.id === 'mbb' ? 2 : 4
+  if (n <= regulation) return `${regulation === 2 ? 'H' : 'Q'}${n}`
+  return n === regulation + 1 ? 'OT' : `${n - regulation}OT`
+}
+
+function normalizeLeader(l) {
+  const a = l?.athlete
+  if (!a) return null
+  return {
+    id: a.id,
+    name: a.shortName ?? a.displayName,
+    fullName: a.displayName,
+    position: a.position?.abbreviation ?? '',
+    jersey: a.jersey ?? '',
+    headshot: a.headshot?.href ?? null,
+    line: l.displayValue ?? '',
+    value: l.value ?? null,
+  }
+}
+
+function normalizeGameTeam(c) {
+  const t = c.team ?? {}
+  return {
+    id: t.id,
+    name: t.shortDisplayName ?? t.location ?? t.displayName,
+    fullName: t.displayName,
+    abbr: t.abbreviation,
+    logo: teamLogo(t),
+    color: t.color ? `#${t.color}` : null,
+    score: c.score ?? '',
+    rank: c.rank && c.rank <= 25 ? c.rank : null,
+    winner: !!c.winner,
+    record: c.record?.find((r) => r.type === 'total')?.displayValue ?? c.record?.[0]?.displayValue ?? '',
+    homeAway: c.homeAway,
+    lines: (c.linescores ?? []).map((l) => l.displayValue ?? ''),
+    hits: (c.linescores ?? []).reduce((n, l) => n + (l.hits ?? 0), 0),
+    errors: (c.linescores ?? []).reduce((n, l) => n + (l.errors ?? 0), 0),
+  }
+}
+
+// Box score tables come back unnamed for basketball and baseball.
+const BOX_TITLES = { baseball: ['Batting', 'Pitching'], basketball: ['Players'] }
+
+/** Everything ESPN's game summary has: leaders, scoring, plays, odds, team stats and box score. */
+export async function fetchGame(sport, id, fetchOpts) {
+  const raw = await getJSON(`${SITE}/${sport.path}/summary?event=${id}`, fetchOpts)
+  const comp = raw.header?.competitions?.[0] ?? {}
+  const type = comp.status?.type ?? {}
+  const competitors = (comp.competitors ?? []).map(normalizeGameTeam)
+  const home = competitors.find((c) => c.homeAway === 'home') ?? competitors[0]
+  const away = competitors.find((c) => c.homeAway === 'away') ?? competitors[1]
+  const byId = Object.fromEntries(competitors.map((c) => [c.id, c]))
+  const baseball = isBaseball(sport)
+
+  // Leaders: one row per category with the away and home leader side by side.
+  const leaderRows = []
+  for (const side of raw.leaders ?? []) {
+    const who = byId[side.team?.id]?.homeAway
+    if (!who) continue
+    for (const cat of side.leaders ?? []) {
+      let row = leaderRows.find((r) => r.name === cat.name)
+      if (!row) leaderRows.push((row = { name: cat.name, label: cat.displayName, away: null, home: null }))
+      row[who] = normalizeLeader(cat.leaders?.[0])
+    }
+  }
+
+  // Basketball and baseball send a flat play-by-play list instead of drives.
+  const flatPlays = (raw.plays ?? [])
+    .filter((p) => p.text)
+    .map((p) => ({
+      id: p.id,
+      text: p.text,
+      period: p.period?.number,
+      half: p.period?.type,
+      clock: p.clock?.displayValue ?? '',
+      scoring: !!p.scoringPlay,
+      team: byId[p.team?.id] ?? null,
+      away: p.awayScore,
+      home: p.homeScore,
+    }))
+
+  const scoring = raw.scoringPlays?.length
+    ? raw.scoringPlays.map((p) => ({
+        id: p.id,
+        type: p.type?.text ?? '',
+        team: byId[p.team?.id] ?? null,
+        text: p.text,
+        period: p.period?.number,
+        clock: p.clock?.displayValue ?? '',
+        away: p.awayScore,
+        home: p.homeScore,
+      }))
+    : baseball
+      ? flatPlays.filter((p) => p.scoring).map((p) => ({ ...p, type: 'Run scores', clock: '' }))
+      : []
+
+  const allDrives = [...(raw.drives?.previous ?? []), ...(raw.drives?.current ? [raw.drives.current] : [])]
+  const drives = allDrives
+    .map((d) => ({
+      id: d.id,
+      team: byId[d.team?.id] ?? null,
+      description: d.description ?? '',
+      result: d.displayResult ?? d.result ?? '',
+      live: d === raw.drives?.current,
+      plays: (d.plays ?? []).map((p) => ({
+        id: p.id,
+        text: p.text,
+        period: p.period?.number,
+        clock: p.clock?.displayValue ?? '',
+        down: p.start?.shortDownDistanceText ?? '',
+        scoring: !!p.scoringPlay,
+      })),
+    }))
+    .reverse()
+
+  // Play-by-play grouped by period (newest first) for sports without drives.
+  const periods = []
+  for (const p of flatPlays) {
+    const key = baseball ? `${p.half}-${p.period}` : p.period
+    let group = periods.find((g) => g.key === key)
+    if (!group) periods.push((group = { key, label: periodLabel(sport, p.period, baseball ? p.half : null), plays: [] }))
+    group.plays.push(p)
+  }
+  periods.reverse()
+
+  // Current down & distance, from the most recent play of the live drive.
+  const last = raw.drives?.current?.plays?.at(-1)
+  const situation = type.state === 'in' ? (last?.end?.downDistanceText ?? last?.start?.downDistanceText ?? '') : ''
+  const possession = type.state === 'in' ? (last?.start?.team?.id ?? raw.drives?.current?.team?.id ?? null) : null
+
+  const pick = raw.pickcenter?.[0]
+  const odds = pick
+    ? {
+        provider: pick.provider?.name ?? '',
+        details: pick.details ?? '',
+        total: pick.overUnder ?? null,
+        away: { spread: signed(pick.spread != null ? -pick.spread : null), moneyLine: signed(pick.awayTeamOdds?.moneyLine) },
+        home: { spread: signed(pick.spread), moneyLine: signed(pick.homeTeamOdds?.moneyLine) },
+      }
+    : null
+
+  const stats = (() => {
+    const [a, h] = ['away', 'home'].map((side) => raw.boxscore?.teams?.find((t) => t.homeAway === side)?.statistics ?? [])
+    const seen = new Set()
+    return (a.length ? a : h)
+      .map((s, i) => ({ label: s.label, away: a[i]?.displayValue ?? '', home: h[i]?.displayValue ?? '' }))
+      .filter((r) => r.label && !seen.has(r.label) && seen.add(r.label))
+  })()
+  if (baseball && !stats.length && away?.lines.length) {
+    stats.push(
+      { label: 'Runs', away: away.score, home: home.score },
+      { label: 'Hits', away: String(away.hits), home: String(home.hits) },
+      { label: 'Errors', away: String(away.errors), home: String(home.errors) },
+    )
+  }
+
+  const titles = BOX_TITLES[sport.path.split('/')[0]] ?? []
+  const players = Object.fromEntries(
+    (raw.boxscore?.players ?? []).map((p) => [
+      byId[p.team?.id]?.homeAway ?? p.team?.id,
+      (p.statistics ?? []).map((c, i) => ({
+        name: c.name ?? `table-${i}`,
+        title: (c.text ?? titles[i] ?? c.name ?? 'Players').replace(new RegExp(`^${p.team?.displayName ?? '\\0'} `), ''),
+        labels: c.labels ?? [],
+        rows: (c.athletes ?? []).map((r) => ({
+          id: r.athlete?.id,
+          name: r.athlete?.displayName,
+          jersey: r.athlete?.jersey ?? '',
+          position: r.athlete?.position?.abbreviation ?? '',
+          starter: !!r.starter,
+          dnp: !!r.didNotPlay,
+          stats: r.stats ?? [],
+        })),
+        totals: c.totals ?? [],
+      })),
+    ]),
+  )
+
+  const info = raw.gameInfo ?? {}
+  const periodCount = Math.max(away?.lines.length ?? 0, home?.lines.length ?? 0)
+  return {
+    id,
+    sport: sport.id,
+    state: type.state ?? 'pre',
+    detail: type.shortDetail ?? type.detail ?? '',
+    date: comp.date ?? null,
+    home,
+    away,
+    situation,
+    possession,
+    linescore: periodCount
+      ? {
+          labels: Array.from({ length: periodCount }, (_, i) =>
+            baseball ? String(i + 1) : periodLabel(sport, i + 1).replace(/^[QH]/, ''),
+          ),
+          baseball,
+        }
+      : null,
+    leaders: leaderRows,
+    scoring,
+    drives,
+    periods,
+    odds,
+    stats,
+    players,
+    venue: info.venue?.fullName ?? '',
+    city: [info.venue?.address?.city, info.venue?.address?.state].filter(Boolean).join(', '),
+    weather: info.weather
+      ? [info.weather.temperature != null && `${info.weather.temperature}°`, info.weather.conditionId].filter(Boolean).join(' · ')
+      : '',
+    attendance: info.attendance || null,
+    broadcast: (comp.broadcasts ?? []).flatMap((b) => b.media?.shortName ?? b.station ?? []).join(', '),
+    link: raw.header?.links?.find((l) => l.rel?.includes('summary'))?.href ?? null,
+  }
+}
+
+// ---------- league leaders ----------
+
+const LEADERS = 'https://site.web.api.espn.com/apis/site/v3/sports'
+
+// Which ESPN leader categories to show, grouped into sections, per sport.
+export const LEADER_SECTIONS = {
+  cfb: [
+    { title: 'Quarterbacks', icon: '🎯', cats: ['passingYards', 'passingTouchdowns', 'quarterbackRating'] },
+    { title: 'Running backs', icon: '💨', cats: ['rushingYards', 'rushingTouchdowns'] },
+    { title: 'Wide receivers', icon: '🙌', cats: ['receivingYards', 'receptions', 'receivingTouchdowns'] },
+    { title: 'Defense', icon: '🛡️', cats: ['totalTackles', 'sacks', 'interceptions', 'interceptionYards'] },
+    { title: 'Kickers', icon: '🦵', cats: ['kickoffYards'] },
+  ],
+  basketball: [
+    { title: 'Scoring', icon: '🔥', cats: ['pointsPerGame', 'points', '3PointsMadePerGame'] },
+    { title: 'Rebounding & playmaking', icon: '🧠', cats: ['reboundsPerGame', 'assistsPerGame', 'doubleDouble'] },
+    { title: 'Defense', icon: '🛡️', cats: ['stealsPerGame', 'blocksPerGame'] },
+    { title: 'Shooting', icon: '🎯', cats: ['fieldGoalPercentage', '3PointPct', 'FreeThrowPct'] },
+    { title: 'Iron men', icon: '⏱️', cats: ['minutesPerGame'] },
+  ],
+}
+
+const PCT_CATS = new Set(['3PointPct', 'FreeThrowPct'])
+const LEADER_LABELS = { quarterbackRating: 'Passer Rating', kickoffYards: 'Kickoff Yards', doubleDouble: 'Double-Doubles' }
+
+function leaderValue(cat, l) {
+  if (PCT_CATS.has(cat) && l.value != null) return `${(l.value * 100).toFixed(1)}%`
+  if (cat === 'fieldGoalPercentage') return `${l.displayValue}%`
+  const v = l.displayValue ?? ''
+  return /^\d{4,}$/.test(v) ? Number(v).toLocaleString() : v
+}
+
+/** The season ESPN's leaders feed is on now: next year's label once a fall/winter season starts. */
+function leaderSeason(sport) {
+  const d = new Date()
+  // Basketball seasons are labeled by the year they end in.
+  return sport.path.startsWith('basketball/') && d.getMonth() >= 9 ? d.getFullYear() + 1 : d.getFullYear()
+}
+
+/**
+ * Top-10 leaderboards per stat. group = an ESPN division or conference id
+ * (football only; basketball's feed is all of D1). Falls back to last season
+ * when the new one hasn't started.
+ */
+export async function fetchLeaders(sport, group) {
+  const sections = LEADER_SECTIONS[sport.byWeek ? 'cfb' : sport.path.startsWith('basketball/') ? 'basketball' : '']
+  if (!sections) return null
+  let season = leaderSeason(sport)
+  const q = (s) => `${LEADERS}/${sport.path}/leaders?season=${s}${sport.byWeek && group ? `&group=${group}` : ''}`
+  let raw
+  try {
+    raw = await getJSON(q(season))
+    if (!raw.leaders?.categories?.some((c) => c.leaders?.length)) throw new Error('empty')
+  } catch {
+    season -= 1
+    raw = await getJSON(q(season))
+  }
+  const cats = Object.fromEntries(
+    (raw.leaders?.categories ?? []).map((c) => [
+      c.name,
+      {
+        name: c.name,
+        label: LEADER_LABELS[c.name] ?? c.displayName,
+        abbr: c.abbreviation ?? '',
+        leaders: (c.leaders ?? []).map((l, i) => ({
+          rank: i + 1,
+          id: l.athlete?.id,
+          name: l.athlete?.displayName ?? '',
+          jersey: l.athlete?.jersey ?? '',
+          position: l.athlete?.position?.abbreviation ?? '',
+          headshot: l.athlete?.headshot?.href ?? null,
+          value: leaderValue(c.name, l),
+          team: l.team
+            ? {
+                id: l.team.id,
+                name: l.team.shortDisplayName ?? l.team.nickname ?? l.team.displayName,
+                abbr: l.team.abbreviation,
+                logo: teamLogo(l.team),
+                color: l.team.color ? `#${l.team.color}` : null,
+              }
+            : null,
+        })),
+      },
+    ]),
+  )
+  return {
+    season,
+    label: sport.path.startsWith('basketball/') ? `${season - 1}–${String(season).slice(2)}` : String(season),
+    sections: sections
+      .map((s) => ({ ...s, cats: s.cats.map((c) => cats[c]).filter((c) => c?.leaders.length) }))
+      .filter((s) => s.cats.length),
+  }
+}
+
+/** Season stat line for a leader's hero card (from the athlete feed). */
+export async function fetchStatLine(sport, id) {
+  const raw = await getJSON(`${WEB}/${sport.path}/athletes/${id}`)
+  return (raw.athlete?.statsSummary?.statistics ?? []).map((s) => ({
+    name: s.shortDisplayName ?? s.abbreviation ?? s.displayName,
+    full: s.displayName,
+    value: s.displayValue,
+    rank: s.rankDisplayValue ?? '',
+  }))
+}

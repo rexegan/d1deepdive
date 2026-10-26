@@ -2,6 +2,7 @@ import TeamLogo from './TeamLogo.jsx'
 import { useFavorites } from '../hooks.js'
 import TeamName from './TeamName.jsx'
 import { isCloseGame } from '../api.js'
+import { openGame } from '../team.js'
 
 // "Sat, Oct 25 · 7:30 PM" in the viewer's time zone; date only when the time isn't set yet.
 function kickoff(game) {
@@ -27,7 +28,10 @@ function TeamRow({ team, sport, game }) {
       </div>
       <button
         className={`star${fav ? ' on' : ''}`}
-        onClick={() => toggle(sport, team)}
+        onClick={(e) => {
+          e.stopPropagation()
+          toggle(sport, team)
+        }}
         aria-label={fav ? `Unfollow ${team.name}` : `Follow ${team.name}`}
         title={fav ? 'Unfollow' : 'Follow team'}
       >
@@ -41,7 +45,13 @@ function TeamRow({ team, sport, game }) {
 export default function GameCard({ game, showSport }) {
   const status = game.state === 'pre' ? 'Upcoming' : game.detail
   return (
-    <article className={`game game-${game.state}`}>
+    <article
+      className={`game game-${game.state} clickable`}
+      tabIndex={0}
+      aria-label={`${game.away?.name} at ${game.home?.name}: open game details`}
+      onClick={() => openGame(game)}
+      onKeyDown={(e) => e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openGame(game))}
+    >
       <header className="game-head">
         <span className={`status status-${game.state}`}>
           {game.state === 'in' && <span className="live-dot" />}
@@ -51,8 +61,12 @@ export default function GameCard({ game, showSport }) {
         {showSport && <span className="sport-tag">{showSport}</span>}
         {game.broadcast && <span className="tv">{game.broadcast}</span>}
       </header>
-      <div className="game-when">{kickoff(game)}</div>
+      <div className="game-when">
+        <span>{kickoff(game)}</span>
+        <span className="game-more">Details ›</span>
+      </div>
       <TeamRow team={game.away} sport={game.sport} game={game} />
+      {game.state === 'post' && <div className="game-final">Final</div>}
       <TeamRow team={game.home} sport={game.sport} game={game} />
       <footer className="game-foot">
         <span className="meta">
@@ -63,7 +77,7 @@ export default function GameCard({ game, showSport }) {
           )}
         </span>
         {game.link && (
-          <a href={game.link} target="_blank" rel="noreferrer" className="more">
+          <a href={game.link} target="_blank" rel="noreferrer" className="more" onClick={(e) => e.stopPropagation()}>
             {game.state === 'pre' ? 'Preview' : game.state === 'in' ? 'Gamecast' : 'Box score'} ↗
           </a>
         )}
