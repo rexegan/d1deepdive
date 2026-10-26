@@ -7,19 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
+          set +e
           L=https://site.web.api.espn.com/apis/site/v3/sports
-          W=https://site.web.api.espn.com/apis/common/v3/sports
           g() { echo "== $1"; curl -s -o /tmp/b.json -w '%{http_code}\n' "$1"; }
           g "$L/football/college-football/leaders?season=2026"
-          jq -c '.leaders | keys' /tmp/b.json
-          jq -c '[.leaders.categories[] | {name, n:(.leaders|length)}]' /tmp/b.json
-          jq -c '.leaders.categories[0] | del(.leaders) ' /tmp/b.json | cut -c1-600
-          jq -c '.leaders.categories[0].leaders[0]' /tmp/b.json | cut -c1-3000
-          jq -c '.leaders.categories[0].leaders[1] | {displayValue, value, rel: .rel, a:.athlete.displayName, team:.athlete.team.abbreviation}' /tmp/b.json
-          jq -c '[.leaders.categories[] | select(.name=="quarterbackRating" or .name=="totalTackles" or .name=="kickoffYards") | {name, l:[.leaders[0:3][] | {displayValue, shortDisplayValue, a:.athlete.displayName, pos:.athlete.position.abbreviation, t:(.athlete.team.abbreviation // .team.abbreviation)}]}]' /tmp/b.json | cut -c1-2000
-          for q in "group=80" "group=81" "limit=25" "group=80&limit=25" "groups=80" "seasontype=2&group=8"; do g "$L/football/college-football/leaders?season=2026&$q"; jq -c '[.leaders.categories[0] | {n:(.leaders|length), top:[.leaders[0:3][] | .athlete.displayName + " " + (.athlete.team.abbreviation // "")]}]' /tmp/b.json; done
-          for s in mens-college-basketball womens-college-basketball; do g "$L/basketball/$s/leaders?season=2026"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // ""))}]' /tmp/b.json | cut -c1-1500; done
+          jq -c '.leaders.categories[0].leaders[0] | del(.athlete.links) | .athlete |= with_entries(select(.key != "links"))' /tmp/b.json | cut -c1-2500
+          jq -c '.leaders.categories[0].leaders[0] | keys' /tmp/b.json
+          jq -c '[.leaders.categories[0].leaders[] | {t:.athlete.team, tid:.athlete.teamId, team:.team}] | .[0:3]' /tmp/b.json | cut -c1-1500
+          for q in "group=8" "group=5" "seasontype=2&group=80"; do g "$L/football/college-football/leaders?season=2026&$q"; jq -c '[.leaders.categories[0] | {n:(.leaders|length), top:[.leaders[0:3][] | .athlete.displayName + " " + (.athlete.team.abbreviation // "-")]}]' /tmp/b.json; done
+          for s in mens-college-basketball womens-college-basketball; do for y in 2026 2027; do g "$L/basketball/$s/leaders?season=$y"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // "-"))}]' /tmp/b.json | cut -c1-1500; done; done
+          g "$L/basketball/mens-college-basketball/leaders?season=2026&group=50"; jq -c '[.leaders.categories[]? | {name, top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // "-"))}]' /tmp/b.json | cut -c1-800
+          g "$L/basketball/mens-college-basketball/leaders?season=2026&group=8"; jq -c '[.leaders.categories[]? | {name, top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // "-"))}]' /tmp/b.json | cut -c1-800
           for s in college-baseball college-softball; do g "$L/baseball/$s/leaders?season=2026"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName)}]' /tmp/b.json | cut -c1-1500; done
-          echo BYATHLETE
-          for q in "season=2026&seasontype=2" "season=2026&seasontype=2&group=80&sort=passing.passingYards:desc" "isqualified=true&page=1&limit=3&season=2026&seasontype=2&category=passing&sort=passing.passingYards:desc" "limit=3&category=passing"; do g "$W/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&$q"; jq -c '.message // ([.athletes[0:3][]? | .athlete.displayName + " " + .athlete.teamShortName])' /tmp/b.json | cut -c1-400; done
-          for q in "group=50" "groups=50" "conference=50" "groupId=50"; do g "$W/basketball/mens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&limit=3&sort=offensive.avgPoints:desc&season=2026&seasontype=2&$q"; jq -c '[.athletes[0:3][]? | .athlete.displayName + " " + .athlete.teamShortName]' /tmp/b.json; done
