@@ -7,36 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          S=https://site.api.espn.com/apis/site/v2/sports
-          H='Origin: https://rexegan.github.io'
-          cors() { echo "== $1"; curl -s -D - -o /tmp/b.json -H "$H" "$1" | grep -i -E '^(HTTP|access-control-allow-origin)'; }
-          for spec in "football/college-football 20261024" "basketball/mens-college-basketball 20260315" "basketball/womens-college-basketball 20260315" "baseball/college-baseball 20260516" "baseball/college-softball 20260502"; do
-            set -- $spec
-            ID=$(curl -s "$S/$1/scoreboard?dates=$2&limit=5" | jq -r '.events[0].id')
-            echo "######## $1 event $ID"
-            cors "$S/$1/summary?event=$ID"
-            jq -c 'keys' /tmp/b.json
-            jq -c '[.leaders[]? | {t:.team.abbreviation, cats:[.leaders[]? | {name, displayName, top:(.leaders[0] | {v:.displayValue, value, n:.athlete.displayName, pos:.athlete.position.abbreviation, hs:(.athlete.headshot.href!=null)})}]}][0]' /tmp/b.json
-            jq -c '[.boxscore.players[0].statistics[]? | {name, text, labels, n:(.athletes|length), totals}]' /tmp/b.json | cut -c1-1500
-            jq -c '[.boxscore.teams[0].statistics[]? | {label, displayValue}]' /tmp/b.json | cut -c1-800
-            jq -c '{drives:(.drives!=null), plays:(.plays|length), sp:(.scoringPlays|length), pc:(.pickcenter|length), p0:(.plays[-1]? | {text, period:.period, clock:.clock.displayValue, scoringPlay, awayScore, homeScore, team:.team.id}), sp0:(.scoringPlays[0]?|{type:.type.text,text,period,clock:.clock.displayValue})}' /tmp/b.json | cut -c1-1200
-            jq -c '.header.competitions[0] | {status:.status.type, c:[.competitors[] | {homeAway, score, rec:.record, ls:.linescores}]}' /tmp/b.json | cut -c1-1500
-          done
-          echo "######## LEADERS"
+          L=https://site.web.api.espn.com/apis/site/v3/sports
           W=https://site.web.api.espn.com/apis/common/v3/sports
-          cors "$W/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&page=1&limit=5&category=passing&sort=passing.passingYards:desc&season=2026&seasontype=2&group=80"
-          jq -c 'keys, .pagination, [.categories[]? | {name, displayName, labels, names}]' /tmp/b.json | cut -c1-3000
-          jq -c '.athletes[0] | {ath:(.athlete|{id,displayName,headshot,position:.position.abbreviation,teamId,teamShortName,teamLogos:(.teamLogos[0].href)}), cats:[.categories[]? | {name, totals:.totals, values:.values, ranks:.ranks}]}' /tmp/b.json | cut -c1-3000
-          cors "$W/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&page=1&limit=3&category=defensive&sort=defensive.totalTackles:desc&season=2026&seasontype=2&group=80"
-          jq -c '[.athletes[]? | {n:.athlete.displayName, t:.athlete.teamShortName}], [.categories[]? | {name, names}]' /tmp/b.json | cut -c1-2500
-          cors "https://site.web.api.espn.com/apis/site/v3/sports/football/college-football/leaders?season=2026"
-          jq -c 'keys' /tmp/b.json | cut -c1-500
-          jq -c '.leaders.categories[]? | {name, displayName, l0:(.leaders[0] | {displayValue, a:.athlete.displayName})}' /tmp/b.json | cut -c1-2000
-          cors "https://site.api.espn.com/apis/site/v2/sports/football/college-football/leaders?season=2026"
-          jq -c 'keys' /tmp/b.json | cut -c1-300
-          cors "$W/basketball/mens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&page=1&limit=3&sort=offensive.avgPoints:desc&season=2026&seasontype=2&group=50"
-          jq -c '[.athletes[]? | {n:.athlete.displayName, t:.athlete.teamShortName}], [.categories[]? | {name, names}]' /tmp/b.json | cut -c1-2500
-          cors "$W/basketball/womens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&page=1&limit=3&sort=offensive.avgPoints:desc&season=2026&seasontype=2&group=50"
-          jq -c '[.athletes[]? | {n:.athlete.displayName}]' /tmp/b.json | cut -c1-500
-          cors "$W/baseball/college-baseball/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&page=1&limit=3&season=2026&seasontype=2"
-          jq -c '[.athletes[]? | {n:.athlete.displayName}], [.categories[]? | {name, names}]' /tmp/b.json | cut -c1-1500
+          g() { echo "== $1"; curl -s -o /tmp/b.json -w '%{http_code}\n' "$1"; }
+          g "$L/football/college-football/leaders?season=2026"
+          jq -c '.leaders | keys' /tmp/b.json
+          jq -c '[.leaders.categories[] | {name, n:(.leaders|length)}]' /tmp/b.json
+          jq -c '.leaders.categories[0] | del(.leaders) ' /tmp/b.json | cut -c1-600
+          jq -c '.leaders.categories[0].leaders[0]' /tmp/b.json | cut -c1-3000
+          jq -c '.leaders.categories[0].leaders[1] | {displayValue, value, rel: .rel, a:.athlete.displayName, team:.athlete.team.abbreviation}' /tmp/b.json
+          jq -c '[.leaders.categories[] | select(.name=="quarterbackRating" or .name=="totalTackles" or .name=="kickoffYards") | {name, l:[.leaders[0:3][] | {displayValue, shortDisplayValue, a:.athlete.displayName, pos:.athlete.position.abbreviation, t:(.athlete.team.abbreviation // .team.abbreviation)}]}]' /tmp/b.json | cut -c1-2000
+          for q in "group=80" "group=81" "limit=25" "group=80&limit=25" "groups=80" "seasontype=2&group=8"; do g "$L/football/college-football/leaders?season=2026&$q"; jq -c '[.leaders.categories[0] | {n:(.leaders|length), top:[.leaders[0:3][] | .athlete.displayName + " " + (.athlete.team.abbreviation // "")]}]' /tmp/b.json; done
+          for s in mens-college-basketball womens-college-basketball; do g "$L/basketball/$s/leaders?season=2026"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // ""))}]' /tmp/b.json | cut -c1-1500; done
+          for s in college-baseball college-softball; do g "$L/baseball/$s/leaders?season=2026"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName)}]' /tmp/b.json | cut -c1-1500; done
+          echo BYATHLETE
+          for q in "season=2026&seasontype=2" "season=2026&seasontype=2&group=80&sort=passing.passingYards:desc" "isqualified=true&page=1&limit=3&season=2026&seasontype=2&category=passing&sort=passing.passingYards:desc" "limit=3&category=passing"; do g "$W/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&$q"; jq -c '.message // ([.athletes[0:3][]? | .athlete.displayName + " " + .athlete.teamShortName])' /tmp/b.json | cut -c1-400; done
+          for q in "group=50" "groups=50" "conference=50" "groupId=50"; do g "$W/basketball/mens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&isqualified=true&limit=3&sort=offensive.avgPoints:desc&season=2026&seasontype=2&$q"; jq -c '[.athletes[0:3][]? | .athlete.displayName + " " + .athlete.teamShortName]' /tmp/b.json; done
