@@ -2,25 +2,17 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
-permissions:
-  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
       - run: |
           set +e
-          mkdir -p fx
           S=https://site.api.espn.com/apis/site/v2/sports
-          get() { f="fx/$(echo "$1" | sed 's#https://##; s#[/?&=]#_#g').json"; curl -s --compressed -o "$f" -w "%{http_code} $1\n" "$1"; }
-          for q in "" "?seasontype=3" "?season=2025" "?seasontype=3&season=2025"; do get "$S/football/college-football/teams/333/schedule$q"; done
-          get "$S/football/college-football/teams/333/statistics"
-          get "$S/football/college-football/rankings"
-          for q in "" "?seasontype=3" "?season=2026" "?seasontype=3&season=2026"; do get "$S/basketball/mens-college-basketball/teams/150/schedule$q"; done
-          get "$S/basketball/mens-college-basketball/rankings"
-          for q in "" "?seasontype=3"; do get "$S/baseball/college-baseball/teams/85/schedule$q"; get "$S/baseball/college-softball/teams/611/schedule$q"; done
-          ls -la fx
-          git config user.name probe && git config user.email probe@example.com
-          git add fx && git commit -qm "Fixtures" && git push
+          for p in "baseball/college-baseball/teams/85" "baseball/college-softball/teams/611" "basketball/mens-college-basketball/teams/150" "basketball/womens-college-basketball/teams/41"; do
+            for q in "seasontype=1" "seasontype=2" "seasontype=3" "seasontype=4" "seasontype=5" "seasontype=2&season=2026"; do
+              echo "== $p $q $(curl -s --compressed "$S/$p/schedule?$q" | jq -c '{rs:.requestedSeason, n:(.events|length), first:.events[0].date, last:.events[-1].date, notes:[.events[].competitions[0].notes[0].headline]|unique|.[0:4]}' | cut -c1-400)"
+            done
+          done
+          curl -s --compressed "$S/baseball/college-baseball/teams/85/schedule" | jq -c '[.events[-3:][] | {date, name, st:.seasonType}]'
