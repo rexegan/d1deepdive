@@ -2,25 +2,21 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
-permissions:
-  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
       - run: |
           set +e
-          mkdir -p fx2
-          while read -r u; do
-            [ -z "$u" ] && continue
-            h=$(printf '%s' "$u" | sha1sum | cut -c1-40)
-            curl -s --compressed -o "fx2/$h.json" -w "%{http_code} %{size_download} $u\n" "$u"
-          done < fx-urls2.txt
-          B="https://site.web.api.espn.com/apis/common/v3/sports/basketball/womens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=3&season=2026&group=50"
-          while read -r k; do
-            echo "$k => $(curl -s --compressed "$B&sort=$k:desc" | jq -c '[.athletes[]?|[.athlete.displayName,.categories[0].totals[0]]]')"
-          done < fx-bbsorts.txt
-          git config user.name probe && git config user.email probe@example.com
-          git add fx2 && git commit -qm "Stats fixtures 2" && git push
+          W=https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete
+          P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=3&season=2026&group=80"
+          F='{c:.pagination.count, a:[.athletes[]?|{n:.athlete.displayName,g:(.categories[]|select(.name=="general")|.totals)}]}'
+          for x in "category=defense&sort=general.fumblesRecovered:desc" "category=defense&sort=defensive.fumblesRecovered:desc" "category=defense&sort=fumbles.fumblesRecovered:desc" "category=defense&sort=general.fumblesRecovered:desc&isqualified=false" "category=general&sort=general.fumblesRecovered:desc" "category=defense:general&sort=general.fumblesRecovered:desc" "category=defense&sort=defensive.fumblesForced:desc" "category=defense&sort=general.fumblesForced:desc&isqualified=false" "sort=general.fumblesRecovered:desc&isqualified=false" "category=defense&sort=defensiveGeneral.fumblesRecovered:desc"; do
+            echo "===== $x"
+            curl -s --compressed "$W?$P&$x" | jq -c "$F" | cut -c1-600
+          done
+          echo "===== limit 1000 defense pages"
+          curl -s --compressed "$W?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=1000&season=2026&group=80&category=defense&sort=defensive.totalTackles:desc" -o d.json -w "%{size_download}\n"
+          jq -c '{c:.pagination, n:(.athletes|length), fr:([.athletes[]|(.categories[]|select(.name=="general")|.totals[2]|tonumber? // 0)]|sort|reverse|.[0:5])}' d.json
+          jq -c '[.athletes[]|.athlete.teams[0].logos|length]|add' d.json
