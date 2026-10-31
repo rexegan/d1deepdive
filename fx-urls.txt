@@ -1,0 +1,11 @@
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=250&sort=passing.passingYards:desc&season=2026&group=80
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=250&sort=defensive.totalTackles:desc&season=2026&group=80
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=250&sort=defensive.sacks:desc&season=2026&group=80
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=250&sort=rushing.rushingYards:desc&season=2026&group=8
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byteam?region=us&lang=en&contentorigin=espn&seasontype=2&page=1&limit=200&season=2026
+https://site.web.api.espn.com/apis/common/v3/sports/basketball/mens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=500&sort=offensive.points:desc&season=2026&group=50
+https://site.web.api.espn.com/apis/common/v3/sports/basketball/mens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=500&sort=offensive.fieldGoalsMade:desc&season=2026&group=50
+https://site.web.api.espn.com/apis/common/v3/sports/basketball/mens-college-basketball/statistics/byteam?region=us&lang=en&contentorigin=espn&seasontype=2&page=1&limit=400&season=2026&group=50
+https://site.web.api.espn.com/apis/common/v3/sports/basketball/mens-college-basketball/statistics/byteam?region=us&lang=en&contentorigin=espn&seasontype=2&page=2&limit=400&season=2026&group=50
+https://site.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings?group=50
+https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80

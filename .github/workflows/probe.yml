@@ -2,35 +2,21 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
       - run: |
           set +e
-          W=https://site.web.api.espn.com/apis/common/v3/sports
-          L=https://site.web.api.espn.com/apis/site/v3/sports
-          P="region=us&lang=en&contentorigin=espn"
-          probe() {
-            echo "===== $1"
-            curl -s --compressed -D /tmp/h -o /tmp/b -H "Origin: https://rexegan.github.io" "$1"
-            head -1 /tmp/h; grep -i "access-control-allow-origin" /tmp/h
-            jq -c "$2" /tmp/b 2>&1 | cut -c1-3500
-          }
-          A='{keys:keys, cats:[.categories[]?|{name,displayName,labels,names:.names}], pag:.pagination, first:(.athletes[0]|{athlete:(.athlete|{id,displayName,teamShortName,teamId,position:.position.abbreviation,headshot:.headshot.href,teamLogos:(.teamLogos|length)}),categories:[.categories[]|{name,totals,ranks}]})}'
-          T='{keys:keys, cats:[.categories[]?|{name,displayName,names}], pag:.pagination, n:(.teams|length), first:(.teams[0]|{team:(.team|{id,displayName,abbreviation,logos:(.logos|length)}),categories:[.categories[]|{name,values,totals,ranks}]})}'
-          G='{rs:.requestedSeason.displayName, pag:(.pagination|{count,pages,limit}), a:[.athletes[0:5][]|{n:.athlete.displayName,t:.athlete.teamShortName,gp:.categories[0].totals[0],pts:.categories[1].totals[0]}]}'
-          M="$W/basketball/mens-college-basketball/statistics/byathlete?$P&page=1&season=2026&seasontype=2"
-          probe "$M&limit=5&qualified=true&sort=offensive.avgPoints:desc" "$G"
-          probe "$M&limit=5&isqualified=true&conference=50&sort=offensive.avgPoints:desc" "$G"
-          probe "$M&limit=5&isqualified=true&groups=50&sort=offensive.avgPoints:desc" "$G"
-          probe "$M&limit=5&isqualified=true&group=50&sort=offensive.points:desc" "$G"
-          probe "$M&limit=500&isqualified=true&group=50&sort=offensive.points:desc" '{pag:.pagination|{count,pages,limit}, n:(.athletes|length), last:(.athletes[-1]|{n:.athlete.displayName,gp:.categories[0].totals[0],pts:.categories[1].totals[0]})}'
-          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&page=1&season=2027&seasontype=2&limit=3&sort=offensive.points:desc" "$G"
-          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&page=1&season=2027&seasontype=1&limit=3&sort=offensive.points:desc" "$G"
-          probe "$W/basketball/mens-college-basketball/statistics/byteam?$P&page=1&limit=1000&group=50&season=2026&seasontype=2" '{pag:.pagination|{count,pages,limit}, n:(.teams|length), gp:([.teams[]|.categories[0].values[7]]|map(select(.>=10))|length), d:[.teams[]|select(.team.abbreviation=="DUKE")|.categories[]|{name,v:.values[0:3],r:.ranks[0:3]}]}'
-          probe "$W/basketball/womens-college-basketball/statistics/byteam?$P&page=1&limit=1000&group=50&season=2026&seasontype=2" '{pag:.pagination|{count,pages,limit}, n:(.teams|length), cats:[.categories[]|{name,names}]}'
-          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=500&group=80&sort=passing.passingYards:desc&season=2026&seasontype=2" '{pag:.pagination|{count,pages,limit}, n:(.athletes|length)}'
-          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=3&group=80&category=defense&sort=defensive.sacks:desc&season=2026&seasontype=2" '{a:[.athletes[]|{n:.athlete.displayName,c:[.categories[]|.name]}], cats:[.categories[]|.name]}'
-          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=3&group=81&sort=rushing.rushingYards:desc&season=2025&seasontype=2" '{pag:.pagination.count, a:[.athletes[]|.athlete.displayName]}'
+          rm -rf fx2 && mkdir -p fx2
+          while read -r u; do
+            [ -z "$u" ] && continue
+            h=$(printf '%s' "$u" | sha1sum | cut -c1-40)
+            curl -s --compressed -o "fx2/$h.json" -w "%{http_code} %{size_download} $u\n" "$u"
+          done < fx-urls.txt
+          git config user.name probe && git config user.email probe@example.com
+          git add fx2 && git commit -qm "Stats fixtures" && git push
