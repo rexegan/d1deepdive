@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 
 // Which team card is open, shared app-wide so any team name can open it.
 let current = null
+// Team cards and game panels can open from each other; the newest goes on top.
+let layer = 50
 const listeners = new Set()
 
 export function openTeam(sport, team) {
   if (!team?.id) return
-  current = { sport, id: String(team.id), name: team.name ?? team.fullName, logo: team.logo }
+  current = { sport, id: String(team.id), name: team.name ?? team.fullName, logo: team.logo, z: ++layer }
   listeners.forEach((fn) => fn(current))
 }
 
@@ -47,7 +49,7 @@ let currentGame = null
 const gameListeners = new Set()
 
 export function openGame(game) {
-  currentGame = game
+  currentGame = { ...game, z: ++layer }
   gameListeners.forEach((fn) => fn(currentGame))
 }
 
@@ -64,3 +66,6 @@ export function useOpenGame() {
   }, [])
   return game
 }
+
+/** Is this panel the topmost one (so Escape closes only it)? */
+export const isTopPanel = (z) => z >= Math.max(current?.z ?? 0, currentGame?.z ?? 0)

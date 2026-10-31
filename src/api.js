@@ -584,6 +584,7 @@ function normalizeScheduleEvent(e, teamId) {
     pointsAgainst: Number(themScore) || 0,
     link: e.links?.find((l) => l.rel?.includes('summary'))?.href ?? e.links?.[0]?.href ?? null,
     postseason: (e.seasonType?.type ?? comp.type?.type) === 3,
+    timeTbd: (comp.timeValid ?? e.timeValid) === false,
     note: comp.notes?.[0]?.headline ?? '',
     opponent: {
       id: t.id,
@@ -626,17 +627,19 @@ export const seasonLabel = (sport, year) =>
 
 // ESPN's /teams/{id} endpoint doesn't send CORS headers, so browsers can't
 // read it. The card is built from /schedule and /statistics (which do) plus
-// the rankings feed. /schedule only returns one season type at a time, so the
-// postseason (bowls, NCAA tournament) is fetched alongside and merged in.
+// the rankings feed. /schedule only returns one season type at a time (and
+// nothing at all during basketball's preseason unless asked), so the regular
+// season and postseason rounds (bowls, NCAA tournaments) are fetched and merged.
 // Pass a season year for an earlier season; omit it for the current one.
+const SEASON_TYPES = [2, 3, 4]
+
 export async function fetchTeam(sport, id, season) {
   const base = `${SITE}/${sport.path}/teams/${id}`
   const yr = season ? `season=${season}` : ''
-  const [schedule, post, stats, polls] = await Promise.allSettled([
-    getJSON(`${base}/schedule${yr ? `?${yr}` : ''}`),
-    getJSON(`${base}/schedule?seasontype=3${yr ? `&${yr}` : ''}`),
+  const [stats, polls, schedule, ...post] = await Promise.allSettled([
     getJSON(`${base}/statistics${yr ? `?${yr}` : ''}`),
     season ? [] : fetchRankings(sport),
+    ...SEASON_TYPES.map((type) => getJSON(`${base}/schedule?seasontype=${type}${yr ? `&${yr}` : ''}`)),
   ])
   if (schedule.status === 'rejected') {
     // ESPN has no team page for some ids (e.g. a borrowed id from another sport).
@@ -646,7 +649,8 @@ export async function fetchTeam(sport, id, season) {
   }
   const t = schedule.value.team ?? stats.value?.team ?? {}
   const seen = new Set()
-  const games = [...(schedule.value.events ?? []), ...(post.status === 'fulfilled' ? post.value.events ?? [] : [])]
+  const games = [schedule, ...post]
+    .flatMap((r) => (r.status === 'fulfilled' ? r.value.events ?? [] : []))
     .filter((e) => !seen.has(e.id) && seen.add(e.id))
     .map((e) => normalizeScheduleEvent(e, t.id ?? id))
     .sort((a, b) => new Date(a.date) - new Date(b.date))

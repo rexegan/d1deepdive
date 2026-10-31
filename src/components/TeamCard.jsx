@@ -4,7 +4,7 @@ import Roster, { PlayerView } from './Roster.jsx'
 import FunFacts from './FunFacts.jsx'
 import Coaches from './Coaches.jsx'
 import { useData, useFavorites } from '../hooks.js'
-import { closeTeam, openGame, useOpenTeam } from '../team.js'
+import { closeTeam, isTopPanel, openGame, useOpenTeam } from '../team.js'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
@@ -46,7 +46,7 @@ function ScheduleRow({ sport, team, g }) {
         ) : g.state === 'post' ? (
           <span className="muted">{g.detail}</span>
         ) : (
-          <span className="muted">{new Date(g.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+          <span className="muted">{g.timeTbd ? 'TBD' : new Date(g.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
         )}
       </span>
     </li>
@@ -293,7 +293,11 @@ export default function TeamCard() {
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && closeTeam()
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || !isTopPanel(open.z)) return
+      e.preventDefault()
+      closeTeam()
+    }
     window.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
@@ -304,7 +308,7 @@ export default function TeamCard() {
 
   if (!open || !sport) return null
   return (
-    <div className="tc-overlay" onClick={closeTeam}>
+    <div className="tc-overlay" style={{ zIndex: open.z }} onClick={closeTeam}>
       <aside className="tc-panel" role="dialog" aria-modal="true" aria-label={open.name} onClick={(e) => e.stopPropagation()}>
         <button className="tc-close" onClick={closeTeam} aria-label="Close">
           ×

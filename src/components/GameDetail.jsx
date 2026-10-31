@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchGame, periodLabel, sportById } from '../api.js'
 import { useData } from '../hooks.js'
-import { closeGame, useOpenGame } from '../team.js'
+import { closeGame, isTopPanel, useOpenGame } from '../team.js'
 import { Headshot, PlayerView } from './Roster.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
@@ -412,7 +412,11 @@ export default function GameDetail() {
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && closeGame()
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || !isTopPanel(open.z)) return
+      e.preventDefault()
+      closeGame()
+    }
     window.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
@@ -423,7 +427,7 @@ export default function GameDetail() {
 
   if (!open) return null
   return (
-    <div className="tc-overlay" onClick={closeGame}>
+    <div className="tc-overlay" style={{ zIndex: open.z }} onClick={closeGame}>
       <aside className="tc-panel gd-panel" role="dialog" aria-modal="true" aria-label="Game details" onClick={(e) => e.stopPropagation()}>
         <button className="tc-close" onClick={closeGame} aria-label="Close">
           ×
