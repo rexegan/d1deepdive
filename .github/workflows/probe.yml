@@ -12,7 +12,7 @@ jobs:
           W=https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete
           P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=2&season=2026&group=80"
           F='[.athletes[]|{n:.athlete.displayName,c:[.categories[]|select(.totals|map(select(.!="-"))|length>1)|{name,t:.totals}]}]'
-          for x in "category=offense:passing&sort=passing.passingYards:desc" "category=passing&sort=passing.passingYards:desc" "category=offense&sort=passing.passingYards:desc" "category=defense&sort=defensive.totalTackles:desc" "category=offense:rushing&sort=rushing.rushingYards:desc" "category=specialteams&sort=kicking.fieldGoalsMade:desc" "category=scoring&sort=scoring.totalPoints:desc" "sort=passing.passingYards:desc" "category=general&sort=passing.passingYards:desc"; do
+          for x in "category=offense:receiving&sort=receiving.receivingYards:desc" "category=specialTeams&sort=kicking.fieldGoalsMade:desc" "category=specialTeams:kicking&sort=kicking.fieldGoalsMade:desc" "category=specialteams:kicking&sort=kicking.fieldGoalsMade:desc" "category=kicking&sort=kicking.fieldGoalsMade:desc" "category=special:kicking&sort=kicking.fieldGoalsMade:desc" "category=specialTeams:punting&sort=punting.grossAvgPuntYards:desc" "category=specialTeams:returning&sort=returning.kickReturnYards:desc" "category=returning&sort=returning.kickReturnYards:desc" "category=punting&sort=punting.grossAvgPuntYards:desc" "category=defense:defensiveinterceptions&sort=defensiveinterceptions.interceptions:desc" "category=defense&sort=defensiveinterceptions.interceptions:desc"; do
             echo "===== $x"
             curl -s --compressed "$W?$P&$x" | jq -c "$F" | cut -c1-1500
           done
