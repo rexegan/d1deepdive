@@ -1,16 +1,17 @@
 const { chromium } = require('playwright')
 ;(async () => {
-  const b = await chromium.launch()
+  const b = await chromium.launch({ channel: 'chrome' })
   process.on('unhandledRejection', (e) => console.log('ERR', e.message))
   const p = await b.newPage({ viewport: { width: 1280, height: 1000 } })
   p.on('console', (m) => m.type() === 'error' && console.log('console:', m.text()))
+  p.setDefaultTimeout(12000)
   const base = 'http://localhost:4173/'
   async function teamFrom(hash, name) {
    try {
     await p.goto(base + hash)
-    await p.waitForSelector('.logo-link', { timeout: 30000 })
+    await p.waitForSelector('.logo-link', { timeout: 20000 })
     await p.locator('.logo-link').first().click()
-    await p.waitForSelector('.tc-sched, .tc-panel .muted', { timeout: 30000 })
+    await p.waitForSelector('.tc-sched, .tc-panel .muted', { timeout: 20000 })
     await p.waitForTimeout(2500)
     await p.screenshot({ path: `shots/${name}.png` })
     const rows = await p.locator('.tc-schedule li').count()
