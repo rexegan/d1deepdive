@@ -8,14 +8,18 @@ jobs:
     steps:
       - run: |
           set +e
-          L=https://site.web.api.espn.com/apis/site/v3/sports
-          g() { echo "== $1"; curl -s -o /tmp/b.json -w '%{http_code}\n' "$1"; }
-          g "$L/football/college-football/leaders?season=2026"
-          jq -c '.leaders.categories[0].leaders[0] | del(.athlete.links) | .athlete |= with_entries(select(.key != "links"))' /tmp/b.json | cut -c1-2500
-          jq -c '.leaders.categories[0].leaders[0] | keys' /tmp/b.json
-          jq -c '[.leaders.categories[0].leaders[] | {t:.athlete.team, tid:.athlete.teamId, team:.team}] | .[0:3]' /tmp/b.json | cut -c1-1500
-          for q in "group=8" "group=5" "seasontype=2&group=80"; do g "$L/football/college-football/leaders?season=2026&$q"; jq -c '[.leaders.categories[0] | {n:(.leaders|length), top:[.leaders[0:3][] | .athlete.displayName + " " + (.athlete.team.abbreviation // "-")]}]' /tmp/b.json; done
-          for s in mens-college-basketball womens-college-basketball; do for y in 2026 2027; do g "$L/basketball/$s/leaders?season=$y"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // "-"))}]' /tmp/b.json | cut -c1-1500; done; done
-          g "$L/basketball/mens-college-basketball/leaders?season=2026&group=50"; jq -c '[.leaders.categories[]? | {name, top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // "-"))}]' /tmp/b.json | cut -c1-800
-          g "$L/basketball/mens-college-basketball/leaders?season=2026&group=8"; jq -c '[.leaders.categories[]? | {name, top:(.leaders[0] | .displayValue + " " + .athlete.displayName + " " + (.athlete.team.abbreviation // "-"))}]' /tmp/b.json | cut -c1-800
-          for s in college-baseball college-softball; do g "$L/baseball/$s/leaders?season=2026"; jq -c '[.leaders.categories[]? | {name, n:(.leaders|length), top:(.leaders[0] | .displayValue + " " + .athlete.displayName)}]' /tmp/b.json | cut -c1-1500; done
+          S=https://site.api.espn.com/apis/site/v2/sports
+          C=https://sports.core.api.espn.com/v2/sports
+          g() { echo "== $1"; curl -s -D /tmp/h -o /tmp/b.json -w '%{http_code}\n' -H 'Origin: https://rexegan.github.io' "$1"; grep -i 'access-control-allow-origin' /tmp/h; }
+          sch() { jq -c '{season:.season, req:.requestedSeason.year, n:(.events|length), first:.events[0].date, last:.events[-1].date, types:([.events[].seasonType.type]|unique), weeks:([.events[].week.number]|unique), ststates:([.events[].competitions[0].status.type.state]|group_by(.)|map({(.[0]):length})|add)}' /tmp/b.json | cut -c1-600; }
+          for q in "" "?seasontype=2" "?seasontype=3" "?season=2025&seasontype=3" "?season=2025"; do g "$S/football/college-football/teams/333/schedule$q"; sch; done
+          for p in "basketball/mens-college-basketball/teams/150" "basketball/womens-college-basketball/teams/41"; do for q in "" "?seasontype=2" "?seasontype=3" "?season=2026" "?season=2026&seasontype=3" "?season=2027"; do g "$S/$p/schedule$q"; sch; done; done
+          jq -c '.events[0].competitions[0].competitors[0] | {id, homeAway, winner, score, team:(.team|{id,displayName,logos:(.logos|length)})}' /tmp/b.json | cut -c1-500
+          for p in "baseball/college-baseball/teams/85" "baseball/college-softball/teams/201"; do g "$S/$p/schedule"; head -c 300 /tmp/b.json; echo; g "$S/$p/schedule?season=2026"; head -c 300 /tmp/b.json; echo; done
+          for l in college-baseball college-softball; do
+            g "$C/baseball/leagues/$l/seasons/2026/teams/85/events?limit=200"; jq -c '{count, n:(.items|length), first:.items[0]}' /tmp/b.json | cut -c1-400
+            g "$C/baseball/leagues/$l/seasons/2026/teams/201/events?limit=200"; jq -c '{count, n:(.items|length), first:.items[0]}' /tmp/b.json | cut -c1-400
+            for d in "20260301" "20260301-20260307" "20260213-20260331"; do g "$S/baseball/$l/scoreboard?dates=$d&limit=1000"; jq -c '{n:(.events|length), first:.events[0].date, last:.events[-1].date, sz:(tostring|length), names:[.events[0:3][].shortName]}' /tmp/b.json | cut -c1-400; done
+            g "$S/baseball/$l/scoreboard?dates=20260301&limit=1000&groups=50"; jq -c '{n:(.events|length)}' /tmp/b.json
+          done
+          g "$C/baseball/leagues/college-baseball/seasons/2026/teams/85/events?limit=200"; jq -r '.items[0]["$ref"]' /tmp/b.json > /tmp/r; R=$(sed 's/^http:/https:/' /tmp/r); g "$R"; jq -c '{id, date, name, comps:(.competitions[0]|{status:.status["$ref"], competitors:[.competitors[]|{id, homeAway, winner, score:.score["$ref"]}]})}' /tmp/b.json | cut -c1-800
