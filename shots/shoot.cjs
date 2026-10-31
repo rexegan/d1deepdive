@@ -3,8 +3,18 @@ const { chromium } = require('playwright')
   const b = await chromium.launch({ channel: 'chrome' })
   process.on('unhandledRejection', (e) => console.log('ERR', e.message))
   const p = await b.newPage({ viewport: { width: 1280, height: 1000 } })
-  p.on('console', (m) => m.type() === 'error' && console.log('console:', m.text()))
+  p.on('console', (m) => m.type() === 'error' && console.log('console:', m.text().slice(0, 200)))
   p.setDefaultTimeout(12000)
+  await p.route(/espn(cdn)?\.com|wikipedia/, async (r) => {
+    try {
+      const res = await r.fetch()
+      if (!res.ok()) console.log('HTTP', res.status(), r.request().url().slice(0, 140))
+      await r.fulfill({ response: res, headers: { ...res.headers(), 'access-control-allow-origin': '*' } })
+    } catch (e) {
+      console.log('route fail', r.request().url().slice(0, 140), e.message.slice(0, 80))
+      await r.abort().catch(() => {})
+    }
+  })
   const base = 'http://localhost:4173/'
   async function teamFrom(hash, name) {
    try {
