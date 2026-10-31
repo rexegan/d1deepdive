@@ -166,43 +166,171 @@ function Scoring({ g, sport }) {
   )
 }
 
+const recordLine = (t) => {
+  const conf = t.confRecord && t.confRecord !== '0-0' ? `${t.confRecord} Conf` : ''
+  return [t.record, conf].filter(Boolean).join(', ')
+}
+
+function OddsCell({ line, odds, big }) {
+  return (
+    <td className={`od-cell${big ? ' od-ml' : ''}`}>
+      <span className="od-box">
+        <strong>{line || '—'}</strong>
+        {odds && <span>{odds}</span>}
+      </span>
+    </td>
+  )
+}
+
 function Odds({ g }) {
   const o = g.odds
   if (!o) return null
+  const time = g.date ? new Date(g.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''
   return (
-    <section className="tc-section">
-      <h4>
-        Game odds <span className="muted tiny">{o.provider && `· ${o.provider}`}</span>
-      </h4>
-      <table className="standings">
-        <thead>
-          <tr>
-            <th className="left">Team</th>
-            <th>Spread</th>
-            <th>Total</th>
-            <th>ML</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[
-            [g.away, o.away, o.total != null && `o${o.total}`],
-            [g.home, o.home, o.total != null && `u${o.total}`],
-          ].map(([t, x, total]) => (
-            <tr key={t.id}>
-              <td className="left">
-                <span className="team-inline">
-                  <TeamLogo src={t.logo} size={20} sport={g.sport} team={t} />
-                  <TeamName sport={g.sport} team={t} />
-                </span>
-              </td>
-              <td>{x.spread || '—'}</td>
-              <td>{total || '—'}</td>
-              <td>{x.moneyLine || '—'}</td>
+    <section className="tc-section od">
+      <header className="od-head">
+        <h4>Game odds</h4>
+        {o.provider && (
+          <span className="od-by muted tiny">
+            Odds by{' '}
+            {o.logo ? (
+              <picture>
+                {o.logoDark && <source srcSet={o.logoDark} media="(prefers-color-scheme: dark)" />}
+                <img src={o.logo} alt={o.provider} height="16" />
+              </picture>
+            ) : (
+              <strong>{o.provider}</strong>
+            )}
+          </span>
+        )}
+      </header>
+      <div className="table-scroll">
+        <table className="od-table">
+          <thead>
+            <tr>
+              <th className="left muted">{g.state === 'pre' ? time : g.state === 'in' ? 'Live' : 'Closing'}</th>
+              {o.hasOpen && <th>Open</th>}
+              <th>Spread</th>
+              <th>Total</th>
+              <th>ML</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="muted tiny">Odds and lines subject to change.</p>
+          </thead>
+          <tbody>
+            {[
+              [g.away, o.away],
+              [g.home, o.home],
+            ].map(([t, x]) => (
+              <tr key={t.id}>
+                <td className="left od-team">
+                  <span className="team-inline">
+                    <TeamLogo src={t.logo} size={24} sport={g.sport} team={t} />
+                    <span>
+                      <TeamName sport={g.sport} team={t}>
+                        <span className="od-full">{t.fullName ?? t.name}</span>
+                        <span className="od-short">{t.name}</span>
+                      </TeamName>
+                      {recordLine(t) && <span className="muted tiny od-rec">({recordLine(t)})</span>}
+                    </span>
+                  </span>
+                </td>
+                {o.hasOpen && (
+                  <td className="od-open">
+                    <strong>{x.open || '—'}</strong>
+                    {x.openOdds && <span className="muted">{x.openOdds}</span>}
+                  </td>
+                )}
+                <OddsCell line={x.spread} odds={x.spreadOdds} />
+                <OddsCell line={x.total} odds={x.totalOdds} />
+                <OddsCell line={x.moneyLine} big />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted tiny">Odds and lines subject to change. 21+. Gambling problem? Call 1-800-GAMBLER.</p>
+    </section>
+  )
+}
+
+// ---------- matchup predictor ----------
+
+const hexRgb = (hex) => {
+  const h = (hex ?? '').replace('#', '')
+  if (h.length !== 6) return null
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16))
+}
+const lum = (rgb) => (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+/** Team colors for the ring: skip ones that vanish on the background, and keep the two sides apart. */
+function ringColors(away, home) {
+  const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  const usable = (c) => {
+    const rgb = hexRgb(c)
+    return rgb && (dark ? lum(rgb) > 0.2 : lum(rgb) < 0.9) ? rgb : null
+  }
+  const homeRgb = usable(home.color) ?? usable(home.altColor) ?? [55, 65, 81]
+  const choices = [away.color, away.altColor].map(usable).filter(Boolean)
+  const awayRgb = choices.find((c) => dist(c, homeRgb) > 90) ?? (dist([156, 163, 175], homeRgb) > 90 ? [156, 163, 175] : [200, 16, 46])
+  const css = (c) => `rgb(${c.join(',')})`
+  return { away: css(awayRgb), home: css(homeRgb) }
+}
+
+const pct = (n) => `${Number(n).toFixed(1)}%`
+
+function Predictor({ g }) {
+  const p = g.predictor
+  if (!p) return null
+  const colors = ringColors(g.away, g.home)
+  const R = 80
+  const C = 2 * Math.PI * R
+  const gap = p.away > 0 && p.home > 0 ? 6 : 0
+  const homeLen = Math.max(0, (p.home / 100) * C - gap)
+  const awayLen = Math.max(0, (p.away / 100) * C - gap)
+  const patternId = `od-hatch-${g.id}`
+  const label = (t, side) => (
+    <div className={`mp-side mp-${side}`}>
+      <strong>{pct(p[side])}</strong>
+      <span className="muted">
+        {side === 'away' && <span className="mp-swatch hatched" style={{ '--c': colors.away }} />}
+        {t.abbr}
+        {side === 'home' && <span className="mp-swatch" style={{ background: colors.home }} />}
+      </span>
+    </div>
+  )
+  return (
+    <section className="tc-section mp">
+      <h4>{p.live ? 'Live win probability' : 'Matchup predictor'}</h4>
+      <div className="mp-body">
+        {label(g.away, 'away')}
+        <svg className="mp-ring" viewBox="0 0 200 200" role="img" aria-label={`${g.away.name} ${pct(p.away)}, ${g.home.name} ${pct(p.home)}`}>
+          <defs>
+            <pattern id={patternId} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+              <rect width="2.2" height="5" fill={colors.away} />
+            </pattern>
+          </defs>
+          <g transform="rotate(-90 100 100)">
+            {/* Home fills clockwise from the top, away counter-clockwise. */}
+            <circle cx="100" cy="100" r={R} fill="none" stroke={colors.home} strokeWidth="18" strokeDasharray={`${homeLen} ${C}`} strokeDashoffset={-gap / 2} />
+            <circle
+              cx="100"
+              cy="100"
+              r={R}
+              fill="none"
+              stroke={`url(#${patternId})`}
+              strokeWidth="18"
+              strokeDasharray={`${awayLen} ${C}`}
+              strokeDashoffset={-gap / 2}
+              transform="scale(1 -1) translate(0 -200)"
+            />
+          </g>
+          <line x1="100" y1="42" x2="100" y2="158" className="mp-divider" />
+          <image href={g.away.logo ?? ''} x="46" y="78" width="44" height="44" />
+          <image href={g.home.logo ?? ''} x="110" y="78" width="44" height="44" />
+        </svg>
+        {label(g.home, 'home')}
+      </div>
+      <p className="muted tiny mp-foot">{g.state === 'post' && !p.live ? 'Pregame projection · ' : ''}According to ESPN Analytics</p>
     </section>
   )
 }
@@ -386,9 +514,12 @@ function Body({ open }) {
       {tab === 'game' && (
         <>
           <Linescore g={g} />
+          {/* Lines lead before the game; afterwards the box score comes first. */}
+          {g.state === 'pre' && <Odds g={g} />}
+          <Predictor g={g} />
           <Leaders g={g} onPlayer={setPlayer} />
           <Scoring g={g} sport={sport} />
-          <Odds g={g} />
+          {g.state !== 'pre' && <Odds g={g} />}
           <Venue g={g} />
         </>
       )}

@@ -424,6 +424,7 @@ function normalizeEvent(e, sport) {
       comp.geoBroadcasts?.map((b) => b.media?.shortName).filter(Boolean).join(', ') ||
       '',
     situation: sit?.downDistanceText ?? sit?.shortDownDistanceText ?? '',
+    line: [comp.odds?.[0]?.details, comp.odds?.[0]?.overUnder != null && `O/U ${comp.odds[0].overUnder}`].filter(Boolean).join(' · '),
     link: e.links?.find((l) => l.rel?.includes('summary'))?.href ?? e.links?.[0]?.href ?? null,
     home: home ? normalizeCompetitor(home, sit) : null,
     away: away ? normalizeCompetitor(away, sit) : null,
@@ -949,15 +950,98 @@ function normalizeGameTeam(c) {
     abbr: t.abbreviation,
     logo: teamLogo(t),
     color: t.color ? `#${t.color}` : null,
+    altColor: t.alternateColor ? `#${t.alternateColor}` : null,
     score: c.score ?? '',
     rank: c.rank && c.rank <= 25 ? c.rank : null,
     winner: !!c.winner,
     record: c.record?.find((r) => r.type === 'total')?.displayValue ?? c.record?.[0]?.displayValue ?? '',
+    confRecord: gameRecord(c, 'vsconf'),
     homeAway: c.homeAway,
     lines: (c.linescores ?? []).map((l) => l.displayValue ?? ''),
     hits: (c.linescores ?? []).reduce((n, l) => n + (l.hits ?? 0), 0),
     errors: (c.linescores ?? []).reduce((n, l) => n + (l.errors ?? 0), 0),
   }
+}
+
+const gameRecord = (c, type) => c.record?.find((r) => r.type === type)?.summary ?? ''
+const num = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
+
+/**
+ * Sportsbook lines from the summary's pickcenter: current spread, total and
+ * moneyline per side, plus the opening line (favorite's spread, other side's total).
+ */
+function parseOdds(pick) {
+  if (!pick) return null
+  const ps = pick.pointSpread ?? {}
+  const tot = pick.total ?? {}
+  const ml = pick.moneyline ?? {}
+  const total = num(pick.overUnder)
+  const homeSpread = num(pick.spread)
+  const side = (key, teamOdds) => {
+    const flatSpread = homeSpread == null ? null : key === 'home' ? homeSpread : -homeSpread
+    const totalSide = key === 'away' ? tot.over : tot.under
+    return {
+      favorite: !!teamOdds?.favorite,
+      favoriteAtOpen: !!teamOdds?.favoriteAtOpen,
+      spread: ps[key]?.close?.line ?? (flatSpread === 0 ? 'PK' : signed(flatSpread)),
+      spreadOdds: ps[key]?.close?.odds ?? signed(teamOdds?.spreadOdds),
+      total: totalSide?.close?.line ?? (total != null ? `${key === 'away' ? 'o' : 'u'}${total}` : ''),
+      totalOdds: totalSide?.close?.odds ?? signed(key === 'away' ? pick.overOdds : pick.underOdds),
+      moneyLine: signed(teamOdds?.moneyLine) || ml[key]?.close?.odds || '',
+      openSpread: ps[key]?.open?.line ?? '',
+      openSpreadOdds: ps[key]?.open?.odds ?? '',
+      openTotal: totalSide?.open?.line ?? '',
+      openTotalOdds: totalSide?.open?.odds ?? '',
+    }
+  }
+  const away = side('away', pick.awayTeamOdds)
+  const home = side('home', pick.homeTeamOdds)
+  if (![away, home].some((s) => s.spread || s.total || s.moneyLine)) return null
+  // ESPN's "Open" column: the opening favorite's spread on their row, the opening total on the other.
+  const openFav = home.favoriteAtOpen || (!away.favoriteAtOpen && home.openSpread.startsWith('-')) ? 'home' : 'away'
+  for (const [key, s] of [['away', away], ['home', home]]) {
+    const fav = key === openFav
+    s.open = fav ? s.openSpread : s.openTotal
+    s.openOdds = fav ? s.openSpreadOdds : s.openTotalOdds
+  }
+  const logos = pick.provider?.logos ?? []
+  return {
+    provider: (pick.provider?.name ?? '').replace(/^Draft Kings$/, 'DraftKings'),
+    logo: logos.find((l) => l.rel?.includes('light'))?.href ?? logos[0]?.href ?? null,
+    logoDark: logos.find((l) => l.rel?.includes('dark'))?.href ?? null,
+    details: pick.details ?? '',
+    total,
+    hasOpen: [away, home].some((s) => s.open),
+    away,
+    home,
+  }
+}
+
+/**
+ * ESPN Analytics win chances. Live games use the latest point of the in-game
+ * win probability chart when there is one; otherwise the pregame matchup predictor.
+ */
+function parsePredictor(raw, home, away, state) {
+  if (!home || !away) return null
+  const wp = raw.winprobability
+  if (state === 'in' && wp?.length) {
+    const h = num(wp.at(-1)?.homeWinPercentage)
+    if (h != null) {
+      const home_ = Math.round(h * 1000) / 10
+      return { live: true, home: home_, away: Math.round((100 - home_) * 10) / 10 }
+    }
+  }
+  const p = raw.predictor
+  if (!p) return null
+  const byId = { [p.homeTeam?.id]: p.homeTeam, [p.awayTeam?.id]: p.awayTeam }
+  const h = byId[home.id] ?? p.homeTeam
+  const a = byId[away.id] ?? p.awayTeam
+  let hp = num(h?.gameProjection)
+  let ap = num(a?.gameProjection)
+  if (hp == null && ap == null) return null
+  if (hp == null) hp = Math.round((100 - ap) * 10) / 10
+  if (ap == null) ap = Math.round((100 - hp) * 10) / 10
+  return { live: false, home: hp, away: ap }
 }
 
 // Box score tables come back unnamed for basketball and baseball.
@@ -1050,16 +1134,8 @@ export async function fetchGame(sport, id, fetchOpts) {
   const situation = type.state === 'in' ? (last?.end?.downDistanceText ?? last?.start?.downDistanceText ?? '') : ''
   const possession = type.state === 'in' ? (last?.start?.team?.id ?? raw.drives?.current?.team?.id ?? null) : null
 
-  const pick = raw.pickcenter?.[0]
-  const odds = pick
-    ? {
-        provider: pick.provider?.name ?? '',
-        details: pick.details ?? '',
-        total: pick.overUnder ?? null,
-        away: { spread: signed(pick.spread != null ? -pick.spread : null), moneyLine: signed(pick.awayTeamOdds?.moneyLine) },
-        home: { spread: signed(pick.spread), moneyLine: signed(pick.homeTeamOdds?.moneyLine) },
-      }
-    : null
+  const odds = parseOdds(raw.pickcenter?.[0] ?? raw.odds?.[0])
+  const predictor = parsePredictor(raw, home, away, type.state)
 
   const stats = (() => {
     const [a, h] = ['away', 'home'].map((side) => raw.boxscore?.teams?.find((t) => t.homeAway === side)?.statistics ?? [])
@@ -1123,6 +1199,7 @@ export async function fetchGame(sport, id, fetchOpts) {
     drives,
     periods,
     odds,
+    predictor,
     stats,
     players,
     venue: info.venue?.fullName ?? '',

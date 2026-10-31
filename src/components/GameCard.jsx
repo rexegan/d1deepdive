@@ -63,6 +63,7 @@ export default function GameCard({ game, showSport }) {
       </header>
       <div className="game-when">
         <span>{kickoff(game)}</span>
+        {game.state === 'pre' && game.line && <span className="game-line">{game.line}</span>}
         <span className="game-more">Details ›</span>
       </div>
       <TeamRow team={game.away} sport={game.sport} game={game} />

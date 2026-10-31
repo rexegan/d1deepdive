@@ -2154,3 +2154,234 @@ table.standings .left {
   background: var(--team);
   opacity: 0.55;
 }
+
+/* ---------- game odds ---------- */
+
+.od-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.od-head h4 {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.od-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.od-by img {
+  height: 16px;
+  width: auto;
+  display: block;
+}
+
+.od-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.od-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 2px;
+}
+
+.od-table th.left,
+.od-table td.left {
+  text-align: left;
+}
+
+.od-team {
+  padding-right: 6px;
+  min-width: 140px;
+}
+
+.od-team .team-inline {
+  align-items: center;
+}
+
+.od-team .team-inline > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.od-rec {
+  white-space: nowrap;
+}
+
+.od-short {
+  display: none;
+}
+
+.od-open {
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.od-open > * {
+  display: block;
+}
+
+.od-open strong {
+  font-weight: 600;
+}
+
+.od-cell {
+  padding: 0;
+  width: 18%;
+  min-width: 58px;
+}
+
+.od-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 7px 4px;
+  min-height: 46px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.od-box strong {
+  font-weight: 600;
+}
+
+.od-box span {
+  color: var(--muted);
+}
+
+.od-ml .od-box strong {
+  font-size: 0.95rem;
+}
+
+/* ---------- matchup predictor ---------- */
+
+.mp h4 {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.mp-body {
+  display: grid;
+  grid-template-columns: 1fr minmax(150px, 230px) 1fr;
+  align-items: start;
+  gap: 6px;
+}
+
+.mp-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.mp-side strong {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.mp-side > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.mp-home {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.mp-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.mp-swatch.hatched {
+  background: repeating-linear-gradient(-55deg, var(--c) 0 2px, transparent 2px 4px);
+}
+
+.mp-ring {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.mp-divider {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.6;
+}
+
+.mp-foot {
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+@media (max-width: 520px) {
+  .mp-side strong {
+    font-size: 1.25rem;
+  }
+  .od-team {
+    min-width: 0;
+    padding-right: 2px;
+  }
+  .od-team .team-inline > :first-child:not(:last-child) {
+    display: none;
+  }
+  .od-full {
+    display: none;
+  }
+  .od-short {
+    display: inline;
+  }
+  .od-table {
+    border-spacing: 3px;
+  }
+  .od-cell {
+    min-width: 50px;
+    width: auto;
+  }
+  .od-box {
+    font-size: 0.78rem;
+    padding: 6px 2px;
+  }
+  .od-open {
+    font-size: 0.78rem;
+  }
+}
+
+.game-line {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
