@@ -1063,9 +1063,21 @@ table.standings .left {
   background: var(--surface-2);
 }
 
-.tc-schedule .opp:has(.tc-note) {
+.tc-schedule .opp {
   flex-wrap: wrap;
   row-gap: 0;
+}
+
+/* Names stay whole; the record or note wraps under them when space runs out. */
+.tc-schedule .opp .team-link {
+  overflow: visible;
+  white-space: normal;
+}
+
+.opp-rec {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .tc-note {

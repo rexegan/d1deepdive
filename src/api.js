@@ -540,15 +540,27 @@ function collectGroups(node, prefix, out) {
   return out
 }
 
-export async function fetchStandings(sport, division) {
+export async function fetchStandings(sport, division, season) {
   const q = new URLSearchParams()
   const group = division ?? sport.divisions[0]?.id
   if (group) q.set('group', group)
+  if (season) q.set('season', season)
   const raw = await getJSON(`${CORE}/${sport.path}/standings?${q}`)
   const out = []
   for (const child of raw.children ?? []) collectGroups(child, '', out)
   if (!out.length && raw.standings) collectGroups(raw, '', out)
   return out
+}
+
+/** Every team's overall record for a season (current if omitted), by team id. */
+export async function fetchRecords(sport, season) {
+  const divisions = sport.divisions.length ? sport.divisions.map((d) => d.id) : [undefined]
+  const lists = await Promise.allSettled(divisions.map((d) => fetchStandings(sport, d, season)))
+  const records = new Map()
+  for (const l of lists)
+    if (l.status === 'fulfilled')
+      for (const g of l.value) for (const e of g.entries) if (e.overall) records.set(String(e.team.id), e.overall)
+  return records
 }
 
 // ---------- team detail ----------

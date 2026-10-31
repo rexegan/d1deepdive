@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchTeam, schoolSiteUrl, seasonLabel, sportById } from '../api.js'
+import { fetchRecords, fetchTeam, schoolSiteUrl, seasonLabel, sportById } from '../api.js'
 import Roster, { PlayerView } from './Roster.jsx'
 import FunFacts from './FunFacts.jsx'
 import Coaches from './Coaches.jsx'
@@ -13,7 +13,7 @@ const shortDate = (iso) => new Date(iso).toLocaleDateString([], { month: 'short'
 const dayDate = (iso) => new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 
 // One game on the schedule. Clicking it opens the game's deep dive.
-function ScheduleRow({ sport, team, g }) {
+function ScheduleRow({ sport, team, g, record }) {
   const us = { id: team.id, name: team.short ?? team.name, logo: team.logo }
   const open = () =>
     openGame({ sport: sport.id, id: g.id, away: g.home ? g.opponent : us, home: g.home ? us : g.opponent })
@@ -31,6 +31,7 @@ function ScheduleRow({ sport, team, g }) {
         <TeamLogo src={g.opponent.logo} size={18} sport={sport.id} team={g.opponent} />
         {g.opponent.rank && <span className="rank">{g.opponent.rank}</span>}
         <TeamName sport={sport.id} team={g.opponent} />
+        {record && record !== '0-0' && <span className="muted opp-rec">({record})</span>}
         {g.conferenceGame && <span className="conf-dot" title="Conference game">•</span>}
         {g.note && <span className="muted tiny tc-note">{g.note}</span>}
       </span>
@@ -54,6 +55,10 @@ function ScheduleRow({ sport, team, g }) {
 }
 
 function Schedule({ sport, team, season, setSeason }) {
+  // Opponents' records for the season shown, from standings (current, or final for past seasons).
+  // The year is always explicit: ESPN's default standings lag behind in the offseason.
+  const year = team.seasonYear
+  const { data: records } = useData(() => fetchRecords(sport, year), [sport.id, year])
   const done = team.games.filter((g) => g.state === 'post')
   const upcoming = team.games.filter((g) => g.state !== 'post')
   const cur = team.currentSeason
@@ -86,7 +91,7 @@ function Schedule({ sport, team, season, setSeason }) {
           <h5 className="tc-sub">Results ({done.length})</h5>
           <ul className="tc-schedule">
             {done.map((g) => (
-              <ScheduleRow key={g.id} sport={sport} team={team} g={g} />
+              <ScheduleRow key={g.id} sport={sport} team={team} g={g} record={records?.get(String(g.opponent.id))} />
             ))}
           </ul>
         </>
@@ -96,7 +101,7 @@ function Schedule({ sport, team, season, setSeason }) {
           <h5 className="tc-sub">Upcoming ({upcoming.length})</h5>
           <ul className="tc-schedule">
             {upcoming.map((g) => (
-              <ScheduleRow key={g.id} sport={sport} team={team} g={g} />
+              <ScheduleRow key={g.id} sport={sport} team={team} g={g} record={records?.get(String(g.opponent.id))} />
             ))}
           </ul>
         </>
