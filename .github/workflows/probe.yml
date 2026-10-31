@@ -10,9 +10,19 @@ jobs:
       - run: |
           set +e
           S=https://site.api.espn.com/apis/site/v2/sports
-          for p in "baseball/college-baseball/teams/85" "baseball/college-softball/teams/611" "basketball/mens-college-basketball/teams/150" "basketball/womens-college-basketball/teams/41"; do
-            for q in "seasontype=1" "seasontype=2" "seasontype=3" "seasontype=4" "seasontype=5" "seasontype=2&season=2026"; do
-              echo "== $p $q $(curl -s --compressed "$S/$p/schedule?$q" | jq -c '{rs:.requestedSeason, n:(.events|length), first:.events[0].date, last:.events[-1].date, notes:[.events[].competitions[0].notes[0].headline]|unique|.[0:4]}' | cut -c1-400)"
+          for p in "football/college-football?groups=80" "basketball/mens-college-basketball?groups=50" "basketball/womens-college-basketball?groups=50"; do
+            path=${p%%\?*}
+            ids=$(curl -s --compressed "$S/$path/scoreboard?${p#*\?}&limit=300" | jq -r '[.events[] | select(.status.type.state=="pre")][0:2][].id, [.events[] | select(.status.type.state=="post")][0:1][].id')
+            for id in $ids; do
+              echo "===== $path $id"
+              curl -s --compressed "$S/$path/summary?event=$id" | jq -c '{pickcenter, odds:(.odds|tostring|.[0:1500]), predictor, wp:(.winprobability|length), recs:[.header.competitions[0].competitors[]|{ha:.homeAway,abbr:.team.abbreviation,color:.team.color,alt:.team.alternateColor,record}]}' | cut -c1-9000
             done
           done
-          curl -s --compressed "$S/baseball/college-baseball/teams/85/schedule" | jq -c '[.events[-3:][] | {date, name, st:.seasonType}]'
+          echo "===== CFB 2025 sample"
+          id=$(curl -s --compressed "$S/football/college-football/scoreboard?groups=80&dates=20251025" | jq -r '.events[0].id')
+          curl -s --compressed "$S/football/college-football/summary?event=$id" | jq -c '{pickcenter, predictor}' | cut -c1-5000
+          for path in baseball/college-baseball baseball/college-softball; do
+            id=$(curl -s --compressed "$S/$path/scoreboard?dates=20260425" | jq -r '.events[0].id')
+            echo "===== $path $id"
+            curl -s --compressed "$S/$path/summary?event=$id" | jq -c '{pickcenter, predictor, keys:keys}' | cut -c1-3000
+          done
