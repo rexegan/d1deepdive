@@ -2,21 +2,19 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
-permissions:
-  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
       - run: |
           set +e
-          rm -rf fx2 && mkdir -p fx2
-          while read -r u; do
-            [ -z "$u" ] && continue
-            h=$(printf '%s' "$u" | sha1sum | cut -c1-40)
-            curl -s --compressed -o "fx2/$h.json" -w "%{http_code} %{size_download} $u\n" "$u"
-          done < fx-urls.txt
-          git config user.name probe && git config user.email probe@example.com
-          git add fx2 && git commit -qm "Stats fixtures" && git push
+          W=https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete
+          P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=2&season=2026&group=80"
+          F='[.athletes[]|{n:.athlete.displayName,c:[.categories[]|select(.totals|map(select(.!="-"))|length>1)|{name,t:.totals}]}]'
+          for x in "category=offense:passing&sort=passing.passingYards:desc" "category=passing&sort=passing.passingYards:desc" "category=offense&sort=passing.passingYards:desc" "category=defense&sort=defensive.totalTackles:desc" "category=offense:rushing&sort=rushing.rushingYards:desc" "category=specialteams&sort=kicking.fieldGoalsMade:desc" "category=scoring&sort=scoring.totalPoints:desc" "sort=passing.passingYards:desc" "category=general&sort=passing.passingYards:desc"; do
+            echo "===== $x"
+            curl -s --compressed "$W?$P&$x" | jq -c "$F" | cut -c1-1500
+          done
+          echo "===== 2025 no category"
+          curl -s --compressed "$W?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=2&season=2025&group=80&sort=passing.passingYards:desc" | jq -c "$F" | cut -c1-1500
