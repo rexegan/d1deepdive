@@ -20,17 +20,22 @@ jobs:
           }
           A='{keys:keys, cats:[.categories[]?|{name,displayName,labels,names:.names}], pag:.pagination, first:(.athletes[0]|{athlete:(.athlete|{id,displayName,teamShortName,teamId,position:.position.abbreviation,headshot:.headshot.href,teamLogos:(.teamLogos|length)}),categories:[.categories[]|{name,totals,ranks}]})}'
           T='{keys:keys, cats:[.categories[]?|{name,displayName,names}], pag:.pagination, n:(.teams|length), first:(.teams[0]|{team:(.team|{id,displayName,abbreviation,logos:(.logos|length)}),categories:[.categories[]|{name,values,totals,ranks}]})}'
-          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=50&group=80&sort=passing.passingYards:desc&season=2026&seasontype=2" "$A"
-          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=50&category=offense:passing&sort=passing.passingYards:desc&season=2026&seasontype=2" "$A"
-          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=false&page=1&limit=50&group=80&category=defense&sort=defensive.sacks:desc&season=2026&seasontype=2" "$A"
-          probe "$W/football/college-football/statistics/byteam?$P&page=1&limit=50&group=80&sort=team.scoring.totalPointsPerGame:desc&season=2026&seasontype=2" "$T"
-          probe "$W/football/college-football/statistics/byteam?$P&season=2026&seasontype=2" "$T"
-          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&group=50&sort=offensive.avgPoints:desc&season=2026&seasontype=2" "$A"
-          probe "$W/basketball/mens-college-basketball/statistics/byteam?$P&page=1&limit=50&group=50&season=2026&seasontype=2" "$T"
-          probe "$W/basketball/womens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&group=50&sort=offensive.avgPoints:desc&season=2026&seasontype=2" "$A"
-          probe "$W/baseball/college-baseball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&season=2026&seasontype=2" "$A"
-          probe "$W/baseball/college-softball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&season=2026&seasontype=2" "$A"
-          probe "$L/football/college-football/leaders?season=2026&group=80&limit=50" '{n:[.leaders.categories[]|{name,displayName,c:(.leaders|length)}]}'
-          probe "$L/basketball/mens-college-basketball/leaders?season=2026&limit=50" '{n:[.leaders.categories[]|{name,displayName,c:(.leaders|length)}]}'
-          probe "$L/football/college-football/teamleaders?season=2026&group=80" 'keys'
-          probe "https://site.api.espn.com/apis/site/v2/sports/football/college-football/statistics?season=2026&group=80" 'keys'
+          G='{rs:.requestedSeason, cs:.currentSeason, pag:(.pagination|{count,pages}), a0:(.athletes[0].athlete|del(.links)), a1:[.athletes[1:6][]|{n:.athlete.displayName,t:.athlete.teamShortName,gp:.categories[0].totals[0]}]}'
+          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=5&group=50&sort=offensive.avgPoints:desc&season=2025" "$G"
+          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=5&group=50&sort=offensive.avgPoints:desc&season=2026" "$G"
+          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=5&group=50&sort=offensive.avgPoints:desc&season=2027" "$G"
+          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=5&group=50&sort=offensive.avgPoints:desc" "$G"
+          probe "$W/basketball/mens-college-basketball/statistics/byteam?$P&page=1&limit=3&group=50&sort=offensive.avgPoints:desc&season=2026" '{rs:.requestedSeason,cs:.currentSeason,pag:.pagination.count,t:[.teams[]|.team|del(.links)]|.[0], n:[.teams[]|.team.displayName], cats:[.teams[0].categories[]|.name]}'
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=3&group=80&sort=passing.QBR:desc&season=2026&seasontype=2" "$G"
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=false&page=1&limit=3&group=80&sort=defensive.kicksBlocked:desc&season=2026&seasontype=2" '{err:.error, code:.code, msg:.message, a:[.athletes[]?|.athlete.displayName]}'
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=1&group=80&sort=passing.passingYards:desc&season=2026&seasontype=2" '.glossary'
+          probe "$W/football/college-football/statistics/byteam?$P&page=1&limit=2&group=80&season=2026&seasontype=2" '{t:[.teams[0].categories[]|{name,displayName,n:(.values|length)}], team:(.teams[0].team|del(.links))}'
+          probe "$W/football/college-football/statistics/byteam?$P&page=1&limit=200&group=81&season=2026&seasontype=2" '{n:(.teams|length)}'
+          probe "$W/football/college-football/statistics/byteam?$P&page=1&limit=200&group=80&season=2026&seasontype=2" '{n:(.teams|length)}'
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=3&group=8&sort=rushing.rushingYards:desc&season=2026&seasontype=2" "$G"
+          probe "https://site.api.espn.com/apis/site/v2/sports/football/college-football/statistics?season=2026&group=80" '{st:[.stats.categories[]?|{name,displayName,n:(.leaders|length)}], s:(.stats|keys?)}'
+          probe "$W/baseball/college-baseball/statistics/byathlete?$P&isqualified=true&page=1&limit=3&season=2026" 'del(.glossary)|tostring|.[0:800]'
+          probe "$W/baseball/college-baseball/statistics/byathlete?$P&isqualified=true&page=1&limit=3&season=2026&category=batting&sort=batting.avg:desc" 'del(.glossary)|tostring|.[0:800]'
+          probe "$W/baseball/college-baseball/statistics/byteam?$P&page=1&limit=3&season=2026" 'del(.glossary)|tostring|.[0:800]'
+          probe "$W/baseball/college-softball/statistics/byteam?$P&page=1&limit=3&season=2026" 'del(.glossary)|tostring|.[0:800]'
+          probe "https://site.api.espn.com/apis/site/v2/sports/baseball/college-baseball/statistics?season=2026" 'tostring|.[0:1200]'
