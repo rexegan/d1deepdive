@@ -4,6 +4,7 @@ import { useData, useFavorites } from '../hooks.js'
 import { setEditorOpen, useEditorOpen } from '../team.js'
 import { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
+import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 function AddTeams({ sport }) {
@@ -25,9 +26,9 @@ function AddTeams({ sport }) {
           const fav = isFav(sport.id, t.id)
           return (
             <li key={t.id}>
-              <TeamLogo src={t.logo} size={22} />
+              <TeamLogo src={t.logo} size={22} sport={sport.id} team={t} />
               <span className="ed-name">
-                {t.fullName ?? t.name} <span className="muted">· {t.conference}</span>
+                <TeamName sport={sport.id} team={t}>{t.fullName ?? t.name}</TeamName> <span className="muted">· {t.conference}</span>
               </span>
               <button className={`btn ${fav ? '' : 'primary'}`} onClick={() => toggle(sport.id, t)}>
                 {fav ? 'Following' : '+ Add'}
@@ -73,9 +74,9 @@ export default function MyTeamsEditor() {
             <ul className="ed-list">
               {list.map((f) => (
                 <li key={`${f.sport}:${f.id}`}>
-                  <TeamLogo src={f.logo} size={22} />
+                  <TeamLogo src={f.logo} size={22} sport={f.sport} team={f} />
                   <span className="ed-name">
-                    {f.name} <span className="muted">· {sportById(f.sport)?.name}</span>
+                    <TeamName sport={f.sport} team={f} /> <span className="muted">· {sportById(f.sport)?.name}</span>
                   </span>
                   <button className="btn danger" onClick={() => toggle(f.sport, f)} aria-label={`Remove ${f.name}`}>
                     Remove

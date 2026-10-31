@@ -59,7 +59,7 @@ export default function Home() {
             <div className="fav-chips">
               {favs.map((f) => (
                 <span key={`${f.sport}:${f.id}`} className="chip">
-                  <TeamLogo src={f.logo} size={18} /> <TeamName sport={f.sport} team={f} />
+                  <TeamLogo src={f.logo} size={18} sport={f.sport} team={f} /> <TeamName sport={f.sport} team={f} />
                   <span className="muted"> · {SPORTS.find((s) => s.id === f.sport)?.short}</span>
                 </span>
               ))}

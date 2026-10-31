@@ -19,7 +19,7 @@ function TeamRow({ team, sport, game }) {
   const lost = game.state === 'post' && !team.winner
   return (
     <div className={`team-row${lost ? ' lost' : ''}${team.winner ? ' won' : ''}`}>
-      <TeamLogo src={team.logo} alt="" size={26} />
+      <TeamLogo src={team.logo} alt="" size={26} sport={sport} team={team} />
       <div className="team-name">
         {team.rank && <span className="rank">{team.rank}</span>}
         <TeamName sport={sport} team={team} className="name" />

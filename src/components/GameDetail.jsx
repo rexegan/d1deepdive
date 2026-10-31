@@ -23,7 +23,7 @@ function Scorebug({ g }) {
   const pre = g.state === 'pre'
   const row = (t, side) => (
     <div className={`gd-team${g.state === 'post' && !t.winner ? ' lost' : ''}`}>
-      <TeamLogo src={t.logo} size={56} />
+      <TeamLogo src={t.logo} size={56} sport={g.sport} team={t} />
       <TeamName sport={g.sport} team={t} className="gd-name">
         {t.rank && <span className="rank">{t.rank}</span>}
         {t.name}
@@ -78,8 +78,8 @@ function Linescore({ g }) {
               <tr key={t.id} className={t.winner ? 'won' : ''}>
                 <td className="left">
                   <span className="team-inline">
-                    <TeamLogo src={t.logo} size={20} />
-                    {t.abbr}
+                    <TeamLogo src={t.logo} size={20} sport={g.sport} team={t} />
+                    <TeamName sport={g.sport} team={t}>{t.abbr}</TeamName>
                   </span>
                 </td>
                 {ls.labels.map((_, i) => (
@@ -119,10 +119,10 @@ function Leaders({ g, onPlayer }) {
       <h4>{g.state === 'pre' ? 'Season leaders' : 'Game leaders'}</h4>
       <div className="gd-leaders-head">
         <span>
-          <TeamLogo src={g.away.logo} size={20} /> {g.away.abbr}
+          <TeamLogo src={g.away.logo} size={20} sport={g.sport} team={g.away} /> <TeamName sport={g.sport} team={g.away}>{g.away.abbr}</TeamName>
         </span>
         <span>
-          {g.home.abbr} <TeamLogo src={g.home.logo} size={20} />
+          <TeamName sport={g.sport} team={g.home}>{g.home.abbr}</TeamName> <TeamLogo src={g.home.logo} size={20} sport={g.sport} team={g.home} />
         </span>
       </div>
       {g.leaders.map((r) => (
@@ -191,8 +191,8 @@ function Odds({ g }) {
             <tr key={t.id}>
               <td className="left">
                 <span className="team-inline">
-                  <TeamLogo src={t.logo} size={20} />
-                  {t.name}
+                  <TeamLogo src={t.logo} size={20} sport={g.sport} team={t} />
+                  <TeamName sport={g.sport} team={t} />
                 </span>
               </td>
               <td>{x.spread || '—'}</td>
@@ -276,10 +276,10 @@ function TeamStats({ g }) {
     <section className="tc-section">
       <div className="gd-leaders-head">
         <span>
-          <TeamLogo src={g.away.logo} size={20} /> {g.away.abbr}
+          <TeamLogo src={g.away.logo} size={20} sport={g.sport} team={g.away} /> <TeamName sport={g.sport} team={g.away}>{g.away.abbr}</TeamName>
         </span>
         <span>
-          {g.home.abbr} <TeamLogo src={g.home.logo} size={20} />
+          <TeamName sport={g.sport} team={g.home}>{g.home.abbr}</TeamName> <TeamLogo src={g.home.logo} size={20} sport={g.sport} team={g.home} />
         </span>
       </div>
       <dl className="tc-statlist gd-stats">

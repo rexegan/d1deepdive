@@ -583,6 +583,8 @@ function normalizeScheduleEvent(e, teamId) {
     pointsFor: Number(usScore) || 0,
     pointsAgainst: Number(themScore) || 0,
     link: e.links?.find((l) => l.rel?.includes('summary'))?.href ?? e.links?.[0]?.href ?? null,
+    postseason: (e.seasonType?.type ?? comp.type?.type) === 3,
+    note: comp.notes?.[0]?.headline ?? '',
     opponent: {
       id: t.id,
       name: t.shortDisplayName ?? t.location ?? t.displayName,
@@ -618,28 +620,43 @@ function recordFrom(games) {
   return games.length ? `${w}-${l}${t ? `-${t}` : ''}` : null
 }
 
+// Season labels as fans say them: basketball seasons span two years.
+export const seasonLabel = (sport, year) =>
+  sport.path.startsWith('basketball/') ? `${year - 1}–${String(year).slice(2)}` : String(year)
+
 // ESPN's /teams/{id} endpoint doesn't send CORS headers, so browsers can't
 // read it. The card is built from /schedule and /statistics (which do) plus
-// the rankings feed.
-export async function fetchTeam(sport, id) {
+// the rankings feed. /schedule only returns one season type at a time, so the
+// postseason (bowls, NCAA tournament) is fetched alongside and merged in.
+// Pass a season year for an earlier season; omit it for the current one.
+export async function fetchTeam(sport, id, season) {
   const base = `${SITE}/${sport.path}/teams/${id}`
-  const [schedule, stats, polls] = await Promise.allSettled([
-    getJSON(`${base}/schedule`),
-    getJSON(`${base}/statistics`),
-    fetchRankings(sport),
+  const yr = season ? `season=${season}` : ''
+  const [schedule, post, stats, polls] = await Promise.allSettled([
+    getJSON(`${base}/schedule${yr ? `?${yr}` : ''}`),
+    getJSON(`${base}/schedule?seasontype=3${yr ? `&${yr}` : ''}`),
+    getJSON(`${base}/statistics${yr ? `?${yr}` : ''}`),
+    season ? [] : fetchRankings(sport),
   ])
   if (schedule.status === 'rejected') {
-    // ESPN has no team pages for some sports (college baseball, softball).
-    if (/ 40[04]$/.test(schedule.reason?.message ?? ''))
+    // ESPN has no team page for some ids (e.g. a borrowed id from another sport).
+    if (/ (40[04]|500)$/.test(schedule.reason?.message ?? ''))
       return { id, limited: true, records: [], games: [], stats: [], rank: null, standing: '', link: null }
     throw schedule.reason
   }
   const t = schedule.value.team ?? stats.value?.team ?? {}
-  const games = (schedule.value.events ?? []).map((e) => normalizeScheduleEvent(e, t.id ?? id))
+  const seen = new Set()
+  const games = [...(schedule.value.events ?? []), ...(post.status === 'fulfilled' ? post.value.events ?? [] : [])]
+    .filter((e) => !seen.has(e.id) && seen.add(e.id))
+    .map((e) => normalizeScheduleEvent(e, t.id ?? id))
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+  // The current season is what ESPN calls season; an older one was requested.
+  const seasonYear = schedule.value.requestedSeason?.year ?? schedule.value.season?.year ?? null
+  const current = !season || season === schedule.value.season?.year
   const done = games.filter((g) => g.result)
 
   const records = [
-    { type: 'total', label: 'Record', summary: t.recordSummary || recordFrom(done) },
+    { type: 'total', label: 'Record', summary: (current && t.recordSummary) || recordFrom(done) },
     { type: 'conf', label: 'Conference', summary: recordFrom(done.filter((g) => g.conferenceGame)) },
     { type: 'home', label: 'Home', summary: recordFrom(done.filter((g) => g.home && !g.neutral)) },
     { type: 'away', label: 'Away', summary: recordFrom(done.filter((g) => !g.home && !g.neutral)) },
@@ -663,13 +680,14 @@ export async function fetchTeam(sport, id) {
     short: t.shortDisplayName ?? t.location,
     location: t.location ?? '',
     nickname: t.name,
-    seasonYear: schedule.value.season?.year ?? null,
+    seasonYear,
+    currentSeason: schedule.value.season?.year ?? seasonYear,
     abbr: t.abbreviation,
     color: t.color ? `#${t.color}` : null,
     logo: teamLogo(t),
     rank,
-    standing: t.standingSummary ?? '',
-    season: schedule.value.season?.displayName ?? '',
+    standing: current ? (t.standingSummary ?? '') : '',
+    season: seasonYear ? seasonLabel(sport, seasonYear) : '',
     records,
     link: t.clubhouse ?? null,
     games,

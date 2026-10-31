@@ -1,15 +1,110 @@
 import { useEffect, useState } from 'react'
-import { fetchTeam, schoolSiteUrl, sportById } from '../api.js'
+import { fetchTeam, schoolSiteUrl, seasonLabel, sportById } from '../api.js'
 import Roster, { PlayerView } from './Roster.jsx'
 import FunFacts from './FunFacts.jsx'
 import Coaches from './Coaches.jsx'
 import { useData, useFavorites } from '../hooks.js'
-import { closeTeam, useOpenTeam } from '../team.js'
+import { closeTeam, openGame, useOpenTeam } from '../team.js'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 const shortDate = (iso) => new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' })
+const dayDate = (iso) => new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+
+// One game on the schedule. Clicking it opens the game's deep dive.
+function ScheduleRow({ sport, team, g }) {
+  const us = { id: team.id, name: team.short ?? team.name, logo: team.logo }
+  const open = () =>
+    openGame({ sport: sport.id, id: g.id, away: g.home ? g.opponent : us, home: g.home ? us : g.opponent })
+  return (
+    <li
+      role="button"
+      tabIndex={0}
+      className="tc-game"
+      onClick={open}
+      onKeyDown={(e) => e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open())}
+    >
+      <span className="muted when">{dayDate(g.date)}</span>
+      <span className="ha muted">{g.neutral ? 'vs*' : g.home ? 'vs' : '@'}</span>
+      <span className="opp">
+        <TeamLogo src={g.opponent.logo} size={18} sport={sport.id} team={g.opponent} />
+        {g.opponent.rank && <span className="rank">{g.opponent.rank}</span>}
+        <TeamName sport={sport.id} team={g.opponent} />
+        {g.conferenceGame && <span className="conf-dot" title="Conference game">•</span>}
+        {g.note && <span className="muted tiny tc-note">{g.note}</span>}
+      </span>
+      <span className="res">
+        {g.result ? (
+          <span className={`r-${g.result}`}>
+            {g.result} {g.score}
+          </span>
+        ) : g.state === 'in' ? (
+          <span className="live">
+            <span className="live-dot" /> {g.score} {g.detail}
+          </span>
+        ) : g.state === 'post' ? (
+          <span className="muted">{g.detail}</span>
+        ) : (
+          <span className="muted">{new Date(g.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+        )}
+      </span>
+    </li>
+  )
+}
+
+function Schedule({ sport, team, season, setSeason }) {
+  const done = team.games.filter((g) => g.state === 'post')
+  const upcoming = team.games.filter((g) => g.state !== 'post')
+  const cur = team.currentSeason
+  const years = cur ? [cur, cur - 1, cur - 2] : []
+  return (
+    <section className="tc-section tc-sched">
+      <div className="tc-sched-head">
+        <h4>Schedule & results{team.season ? ` · ${team.season}` : ''}</h4>
+        {years.length > 0 && (
+          <div className="seg small">
+            {years.map((y) => (
+              <button key={y} className={(season ?? cur) === y ? 'on' : ''} onClick={() => setSeason(y === cur ? null : y)}>
+                {seasonLabel(sport, y)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {team.games.length === 0 && <p className="muted">No games on ESPN's schedule for this season yet.</p>}
+      {team.games.length > 0 && !done.length && !season && cur && (
+        <p className="muted tiny">
+          No games played yet this season.{' '}
+          <button className="team-link more" onClick={() => setSeason(cur - 1)}>
+            See last season's results
+          </button>
+        </p>
+      )}
+      {done.length > 0 && (
+        <>
+          <h5 className="tc-sub">Results ({done.length})</h5>
+          <ul className="tc-schedule">
+            {done.map((g) => (
+              <ScheduleRow key={g.id} sport={sport} team={team} g={g} />
+            ))}
+          </ul>
+        </>
+      )}
+      {upcoming.length > 0 && (
+        <>
+          <h5 className="tc-sub">Upcoming ({upcoming.length})</h5>
+          <ul className="tc-schedule">
+            {upcoming.map((g) => (
+              <ScheduleRow key={g.id} sport={sport} team={team} g={g} />
+            ))}
+          </ul>
+        </>
+      )}
+      {team.games.length > 0 && <p className="muted tiny">vs* = neutral site · • = conference game · tap a game for the box score</p>}
+    </section>
+  )
+}
 
 function summarize(games) {
   const done = games.filter((g) => g.result)
@@ -31,14 +126,15 @@ function summarize(games) {
 }
 
 function Body({ sport, open }) {
-  const { data: loaded, error, loading, refresh } = useData(() => fetchTeam(sport, open.id), [sport.id, open.id])
+  const [season, setSeason] = useState(null)
+  const { data: loaded, error, loading, refresh } = useData(() => fetchTeam(sport, open.id, season), [sport.id, open.id, season])
   const { isFav, toggle } = useFavorites()
   const [tab, setTab] = useState('overview')
   const [player, setPlayer] = useState(null)
 
   if (player) return <PlayerView sport={sport} player={player} onBack={() => setPlayer(null)} />
 
-  if (loading)
+  if (loading && !loaded)
     return (
       <>
         <div className="tc-head">
@@ -142,7 +238,7 @@ function Body({ sport, open }) {
       ) : (
         <>
       {team.limited && (
-        <p className="muted">ESPN doesn't publish team schedules or stats for college {sport.name.toLowerCase()}.</p>
+        <p className="muted">ESPN doesn't publish a schedule for this team in college {sport.name.toLowerCase()}.</p>
       )}
 
       {s.form.length > 0 && (
@@ -166,35 +262,7 @@ function Body({ sport, open }) {
         </div>
       )}
 
-      {team.games.length > 0 && (
-        <details className="tc-section" open>
-          <summary>Schedule & results</summary>
-          <ul className="tc-schedule">
-            {team.games.map((g) => (
-              <li key={g.id}>
-                <span className="muted when">{shortDate(g.date)}</span>
-                <span className="ha muted">{g.neutral ? 'vs*' : g.home ? 'vs' : '@'}</span>
-                <span className="opp">
-                  <TeamLogo src={g.opponent.logo} size={18} />
-                  {g.opponent.rank && <span className="rank">{g.opponent.rank}</span>}
-                  <TeamName sport={sport.id} team={g.opponent} />
-                  {g.conferenceGame && <span className="conf-dot" title="Conference game">•</span>}
-                </span>
-                <span className="res">
-                  {g.result ? (
-                    <a href={g.link ?? undefined} target="_blank" rel="noreferrer" className={`r-${g.result}`}>
-                      {g.result} {g.score}
-                    </a>
-                  ) : (
-                    <span className="muted">{g.state === 'in' ? g.detail : new Date(g.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="muted tiny">vs* = neutral site · • = conference game</p>
-        </details>
-      )}
+      <Schedule sport={sport} team={team} season={season} setSeason={setSeason} />
 
       {team.stats.map((c, i) => (
         <details key={c.name} className="tc-section" open={i === 0}>

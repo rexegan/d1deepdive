@@ -57,7 +57,7 @@ function Category({ sport, cat, onPlayer }) {
             {top.name}
           </button>
           <span className="ll-team">
-            <TeamLogo src={top.team?.logo} size={18} />
+            <TeamLogo src={top.team?.logo} size={18} sport={sport.id} team={top.team} />
             <TeamName sport={sport.id} team={top.team} />
             <span className="muted">
               {[top.position, top.jersey && `#${top.jersey}`].filter(Boolean).join(' · ')}

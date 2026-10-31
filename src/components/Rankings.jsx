@@ -101,7 +101,7 @@ export default function Rankings({ sport, params }) {
               <li key={r.team.id ?? r.rank} className="row">
                 <span className="rk">{r.rank}</span>
                 <Move rank={r.rank} previous={r.previous} />
-                <TeamLogo src={r.team.logo} size={28} />
+                <TeamLogo src={r.team.logo} size={28} sport={sport.id} team={r.team} />
                 <span className="team-cell">
                   <strong>
                     <TeamName sport={sport.id} team={r.team}>

@@ -121,7 +121,7 @@ export default function Standings({ sport, params }) {
                     <tr key={e.team.id ?? e.team.name}>
                       <td className="left">
                         <span className="team-inline">
-                          <TeamLogo src={e.team.logo} size={20} />
+                          <TeamLogo src={e.team.logo} size={20} sport={sport.id} team={e.team} />
                           {data.ranks.has(e.team.id) && <span className="rank">{data.ranks.get(e.team.id)}</span>}
                           <TeamName sport={sport.id} team={e.team} />
                         </span>

@@ -854,6 +854,24 @@ table.standings .left {
   text-underline-offset: 2px;
 }
 
+.logo-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  border-radius: 6px;
+}
+
+.logo-link:hover .logo {
+  transform: scale(1.08);
+}
+
+.logo-link .logo {
+  transition: transform 0.12s ease;
+}
+
 .tc-overlay {
   position: fixed;
   inset: 0;
@@ -1011,7 +1029,7 @@ table.standings .left {
 
 .tc-schedule li {
   display: grid;
-  grid-template-columns: 52px 28px 1fr auto;
+  grid-template-columns: 82px 28px 1fr auto;
   align-items: center;
   gap: 6px;
   padding: 5px 0;
@@ -1023,6 +1041,52 @@ table.standings .left {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+.tc-schedule .res > span {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tc-schedule .res .muted {
+  font-weight: 500;
+}
+
+.tc-game {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tc-game:hover,
+.tc-game:focus-visible {
+  background: var(--surface-2);
+}
+
+.tc-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tc-sched-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-sched-head h4 {
+  margin: 0;
+}
+
+.tc-sub {
+  margin: 14px 0 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
 }
 
 .tc-schedule .res a {
