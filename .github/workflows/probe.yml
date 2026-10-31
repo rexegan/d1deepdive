@@ -11,12 +11,9 @@ jobs:
           set +e
           V=https://site.api.espn.com/apis/v2/sports
           s() { echo "== $1"; curl -s --compressed "$1" | jq -c '[.. | objects | select(.entries?) | .entries[]] | {n:length, first:(.[0] | {t:.team.displayName, rec:([.stats[] | select(.type=="total" or .name=="overall") | .displayValue])})}' | cut -c1-300; }
-          s "$V/football/college-football/standings?group=80"
-          s "$V/football/college-football/standings?group=80&season=2025"
-          s "$V/football/college-football/standings?group=81&season=2024"
-          s "$V/basketball/mens-college-basketball/standings"
-          s "$V/basketball/mens-college-basketball/standings?season=2026"
-          s "$V/basketball/mens-college-basketball/standings?season=2025"
-          s "$V/baseball/college-baseball/standings"
-          s "$V/baseball/college-baseball/standings?season=2025"
-          s "$V/baseball/college-softball/standings?season=2026"
+          s "$V/basketball/mens-college-basketball/standings?season=2027"
+          s "$V/basketball/womens-college-basketball/standings?season=2027"
+          s "$V/football/college-football/standings?group=80&season=2026"
+          for q in "" "?season=2026" "?group=50" "?group=26&season=2026" "?season=2026&type=0&level=1"; do s "$V/baseball/college-baseball/standings$q"; done
+          curl -s --compressed "$V/baseball/college-baseball/standings?season=2026" | jq -c '{keys:keys, seasons:.seasons, ch:[.children[]?|.name]}' | cut -c1-600
+          curl -s --compressed "$V/basketball/mens-college-basketball/standings?season=2027" | jq -c '{keys:keys, ch:[.children[]?|{name, season:.standings.season, sd:.standings.seasonDisplayName}][0:2]}' | cut -c1-600
