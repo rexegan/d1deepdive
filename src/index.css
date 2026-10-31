@@ -2385,3 +2385,195 @@ table.standings .left {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* national stats */
+.ns-tabs a.on {
+  background: var(--text);
+  color: var(--surface);
+  border-color: var(--text);
+}
+.ns-note {
+  margin: 0 0 8px;
+}
+.ns-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+table.ns-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+.ns-table th,
+.ns-table td {
+  padding: 6px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+.ns-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  z-index: 1;
+}
+.ns-table th button {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.ns-table th button:hover,
+.ns-table th.on {
+  color: var(--accent);
+}
+.ns-arrow {
+  font-size: 0.6rem;
+}
+.ns-table tbody tr + tr td {
+  border-top: 1px solid var(--surface-2);
+}
+.ns-table tbody tr:hover td {
+  background: var(--surface-2);
+}
+.ns-table tr.fav td {
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.ns-table .left {
+  text-align: left;
+}
+.ns-table td.on {
+  position: relative;
+  font-weight: 800;
+}
+.ns-bar {
+  position: absolute;
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 4px 0 0 4px;
+}
+.ns-val {
+  position: relative;
+}
+.ns-rk {
+  width: 32px;
+  text-align: center !important;
+  color: var(--muted);
+  font-weight: 700;
+}
+.ns-medal {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #111;
+  font-size: 0.75rem;
+}
+.ns-medal.m1 {
+  background: #f5c542;
+}
+.ns-medal.m2 {
+  background: #cfd6df;
+}
+.ns-medal.m3 {
+  background: #d99a62;
+}
+.ns-who {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+  min-width: 170px;
+}
+.ns-table th.ns-who {
+  z-index: 2;
+}
+.ns-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ns-photo {
+  all: unset;
+  cursor: pointer;
+  flex: none;
+}
+.ns-names {
+  display: grid;
+  line-height: 1.2;
+}
+.ns-pname,
+.ns-tname {
+  all: unset;
+  cursor: pointer;
+  font-weight: 700;
+}
+.ns-pname:hover,
+.ns-tname:hover {
+  color: var(--accent);
+}
+.ns-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+.ns-sub .team-link {
+  font-size: inherit;
+  color: inherit;
+}
+.ns-more {
+  display: block;
+  margin: 12px auto 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text);
+}
+.ns-more:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@media (max-width: 720px) {
+  .ns-who {
+    min-width: 140px;
+  }
+  .ns-photo {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  .tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs {
+    width: 100%;
+  }
+  .tabs a {
+    flex: 1 0 auto;
+    justify-content: center;
+    padding: 6px 7px;
+    font-size: 0.8rem;
+  }
+  .tabs .two-line small {
+    font-size: 0.58rem;
+  }
+}
+.ll-filters .seg button {
+  white-space: nowrap;
+}

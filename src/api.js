@@ -1317,3 +1317,154 @@ export async function fetchStatLine(sport, id) {
     rank: s.rankDisplayValue ?? '',
   }))
 }
+
+// ---------- national stats (every player / every team, sortable) ----------
+
+const STATS_Q = 'region=us&lang=en&contentorigin=espn&seasontype=2'
+
+const toNum = (s) => {
+  const n = parseFloat(String(s ?? '').replace(/,/g, ''))
+  return Number.isFinite(n) ? n : null
+}
+
+// { category: { statName: index } } from a stats feed's column list.
+function statIndex(categories, prefix = '') {
+  const idx = {}
+  for (const cat of categories ?? []) {
+    if (!cat.names || idx[prefix + cat.name]) continue
+    idx[prefix + cat.name] = Object.fromEntries(cat.names.map((n, i) => [n, i]).reverse())
+  }
+  return idx
+}
+
+function statTeam(t) {
+  if (!t) return null
+  return {
+    id: t.id,
+    name: t.shortDisplayName ?? t.nickname ?? t.displayName,
+    fullName: t.displayName,
+    abbr: t.abbreviation,
+    logo: teamLogo(t) ?? (t.id ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${t.id}.png` : null),
+    color: t.color ? `#${t.color}` : null,
+  }
+}
+
+/** Fetch a stats feed for this season, or last season when this one has no numbers yet. */
+async function seasonFeed(sport, url, has) {
+  let season = leaderSeason(sport)
+  try {
+    const raw = await getJSON(url(season))
+    if (has(raw)) return { raw, season }
+  } catch {
+    // fall through to last season
+  }
+  season -= 1
+  return { raw: await getJSON(url(season)), season }
+}
+
+const seasonText = (raw, sport, season) =>
+  raw.requestedSeason?.displayName ??
+  (sport.path.startsWith('basketball/') ? `${season - 1}–${String(season).slice(2)}` : String(season))
+
+// D1 team ids, from standings (basketball stat feeds also list the
+// small-college teams that played a D1 opponent).
+async function d1TeamIds(sport) {
+  try {
+    const teams = await fetchTeams(sport)
+    return teams.length > 100 ? new Set(teams.map((t) => String(t.id))) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Every qualified player, ranked by one stat. sort = '<category>.<stat>';
+ * football also needs the ESPN category to fill in. Rows carry every stat as
+ * { '<category>.<stat>': { v: number, d: display } }.
+ */
+export async function fetchPlayerStats(sport, { sort, category, limit = 200, qualified = true }) {
+  // Football's feed is FBS-only whatever group is asked for; basketball's is all of D1.
+  const g = sport.byWeek ? '80' : '50'
+  const url = (s) =>
+    `${WEB}/${sport.path}/statistics/byathlete?${STATS_Q}&isqualified=${qualified}&page=1&limit=${limit}` +
+    `&sort=${sort}:desc&season=${s}${g ? `&group=${g}` : ''}${category ? `&category=${category}` : ''}`
+  const [{ raw, season }, d1] = await Promise.all([
+    seasonFeed(sport, url, (r) => r.athletes?.length > 0),
+    sport.byWeek ? null : d1TeamIds(sport),
+  ])
+  const idx = statIndex(raw.categories)
+  const rows = (raw.athletes ?? []).map((row) => {
+    const a = row.athlete ?? {}
+    const stats = {}
+    for (const cat of row.categories ?? []) {
+      const names = idx[cat.name]
+      if (!names) continue
+      for (const [n, i] of Object.entries(names)) {
+        const d = cat.totals?.[i]
+        if (d != null) stats[`${cat.name}.${n}`] = { v: toNum(d), d }
+      }
+    }
+    const t = a.teams?.[0] ?? { id: a.teamId, abbreviation: a.teamShortName, logos: a.teamLogos }
+    return {
+      id: a.id,
+      name: a.displayName ?? '',
+      position: a.position?.abbreviation ?? '',
+      jersey: a.jersey ?? '',
+      headshot: a.headshot?.href ?? null,
+      team: statTeam({ ...t, id: t.id ?? a.teamId, logos: t.logos ?? a.teamLogos }),
+      stats,
+    }
+  })
+  return {
+    season,
+    label: seasonText(raw, sport, season),
+    total: raw.pagination?.count ?? rows.length,
+    rows: d1 ? rows.filter((r) => d1.has(String(r.team?.id))) : rows,
+  }
+}
+
+/** Every team's season stats (own and opponents'), keyed 'own.<cat>.<stat>' / 'opp.<cat>.<stat>'. */
+export async function fetchTeamStats(sport) {
+  const basketball = !sport.byWeek
+  const url = (page) => (s) =>
+    `${WEB}/${sport.path}/statistics/byteam?${STATS_Q}&page=${page}&limit=${basketball ? 400 : 200}&season=${s}${
+      basketball ? '&group=50' : ''
+    }`
+  const [{ raw, season }, d1] = await Promise.all([
+    seasonFeed(sport, url(1), (r) => r.teams?.length > 0),
+    basketball ? d1TeamIds(sport) : null,
+  ])
+  let teams = raw.teams ?? []
+  if ((raw.pagination?.pages ?? 1) > 1) {
+    const more = await Promise.all(
+      Array.from({ length: raw.pagination.pages - 1 }, (_, i) => getJSON(url(i + 2)(season)).catch(() => null)),
+    )
+    teams = teams.concat(...more.map((m) => m?.teams ?? []))
+  }
+  const idx = statIndex(raw.categories)
+  const rows = teams.map((row) => {
+    const stats = {}
+    const seen = new Set()
+    for (const cat of row.categories ?? []) {
+      // Each category comes twice: the team's own numbers, then its opponents'.
+      const side = /^opp/i.test(cat.displayName ?? '') || seen.has(cat.name) ? 'opp' : 'own'
+      seen.add(cat.name)
+      const names = idx[cat.name]
+      if (!names) continue
+      for (const [n, i] of Object.entries(names)) {
+        const d = cat.totals?.[i]
+        if (d == null || d === '-') continue
+        stats[`${side}.${cat.name}.${n}`] = { v: cat.values?.[i] ?? toNum(d), d }
+      }
+    }
+    return { team: statTeam(row.team), stats }
+  })
+  const seen = new Set()
+  return {
+    season,
+    label: seasonText(raw, sport, season),
+    rows: rows.filter(
+      (r) => r.team?.id && !seen.has(r.team.id) && seen.add(r.team.id) && (!d1 || d1.has(String(r.team.id))),
+    ),
+  }
+}
