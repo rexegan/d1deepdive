@@ -10,19 +10,8 @@ jobs:
       - run: |
           set +e
           S=https://site.api.espn.com/apis/site/v2/sports
-          for p in "football/college-football?groups=80" "basketball/mens-college-basketball?groups=50" "basketball/womens-college-basketball?groups=50"; do
-            path=${p%%\?*}
-            ids=$(curl -s --compressed "$S/$path/scoreboard?${p#*\?}&limit=300" | jq -r '[.events[] | select(.status.type.state=="pre")][0:2][].id, [.events[] | select(.status.type.state=="post")][0:1][].id')
-            for id in $ids; do
-              echo "===== $path $id"
-              curl -s --compressed "$S/$path/summary?event=$id" | jq -c '{pickcenter, odds:(.odds|tostring|.[0:1500]), predictor, wp:(.winprobability|length), recs:[.header.competitions[0].competitors[]|{ha:.homeAway,abbr:.team.abbreviation,color:.team.color,alt:.team.alternateColor,record}]}' | cut -c1-9000
-            done
-          done
-          echo "===== CFB 2025 sample"
-          id=$(curl -s --compressed "$S/football/college-football/scoreboard?groups=80&dates=20251025" | jq -r '.events[0].id')
-          curl -s --compressed "$S/football/college-football/summary?event=$id" | jq -c '{pickcenter, predictor}' | cut -c1-5000
-          for path in baseball/college-baseball baseball/college-softball; do
-            id=$(curl -s --compressed "$S/$path/scoreboard?dates=20260425" | jq -r '.events[0].id')
-            echo "===== $path $id"
-            curl -s --compressed "$S/$path/summary?event=$id" | jq -c '{pickcenter, predictor, keys:keys}' | cut -c1-3000
+          for x in "football/college-football 401859185" "football/college-football 401856842" "basketball/mens-college-basketball 401920982" "baseball/college-baseball 401848643"; do
+            set -- $x
+            echo "===== $1 $2"
+            curl -s --compressed "$S/$1/summary?event=$2" | jq -c 'walk(if type=="object" then del(.links, .link, .logos, .tracking) else . end) | {pickcenter, odds, predictor, header:{competitions:[.header.competitions[0]|del(.details)]}, gameInfo}'
           done
