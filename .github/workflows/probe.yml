@@ -10,19 +10,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          ref: claude/project-thread-x9fl16
-          path: app
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: cd app && npm ci && npm run build
-      - run: npm init -y >/dev/null && npm i playwright@1
       - run: |
-          (cd app && nohup npx vite preview --port 4173 --strictPort > /tmp/preview.log 2>&1 &)
-          sleep 4
-          timeout 400 node shots/shoot.cjs || true
-      - run: |
+          set +e
+          mkdir -p fx
+          S=https://site.api.espn.com/apis/site/v2/sports
+          get() { f="fx/$(echo "$1" | sed 's#https://##; s#[/?&=]#_#g').json"; curl -s --compressed -o "$f" -w "%{http_code} $1\n" "$1"; }
+          for q in "" "?seasontype=3" "?season=2025" "?seasontype=3&season=2025"; do get "$S/football/college-football/teams/333/schedule$q"; done
+          get "$S/football/college-football/teams/333/statistics"
+          get "$S/football/college-football/rankings"
+          for q in "" "?seasontype=3" "?season=2026" "?seasontype=3&season=2026"; do get "$S/basketball/mens-college-basketball/teams/150/schedule$q"; done
+          get "$S/basketball/mens-college-basketball/rankings"
+          for q in "" "?seasontype=3"; do get "$S/baseball/college-baseball/teams/85/schedule$q"; get "$S/baseball/college-softball/teams/611/schedule$q"; done
+          ls -la fx
           git config user.name probe && git config user.email probe@example.com
-          git add shots/*.png && git commit -qm "Screenshots" && git push
+          git add fx && git commit -qm "Fixtures" && git push
