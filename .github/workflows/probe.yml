@@ -2,27 +2,24 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-x9fl16
+          path: app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - run: |
-          set +e
-          S=https://site.api.espn.com/apis/site/v2/sports
-          C=https://sports.core.api.espn.com/v2/sports
-          g() { echo "== $1"; curl -s -D /tmp/h -o /tmp/b.json -w '%{http_code}\n' -H 'Origin: https://rexegan.github.io' "$1"; grep -i 'access-control-allow-origin' /tmp/h; }
-          sch() { jq -c '{season:.season, req:.requestedSeason.year, n:(.events|length), first:.events[0].date, last:.events[-1].date, types:([.events[].seasonType.type]|unique), weeks:([.events[].week.number]|unique), ststates:([.events[].competitions[0].status.type.state]|group_by(.)|map({(.[0]):length})|add)}' /tmp/b.json | cut -c1-600; }
-          for q in "" "?seasontype=2" "?seasontype=3" "?season=2025&seasontype=3" "?season=2025"; do g "$S/football/college-football/teams/333/schedule$q"; sch; done
-          for q in "" "?seasontype=2" "?seasontype=3" "?season=2025&seasontype=3"; do g "$S/football/college-football/teams/333/schedule$q"; sch; done
-          for q in "" "?season=2026" "?season=2026&seasontype=3" "?seasontype=2"; do g "$S/baseball/college-baseball/teams/85/schedule$q"; sch; done
-          jq -c '.events[0] | {id,date,seasonType, comp:(.competitions[0]|{neutralSite, conferenceCompetition, status:.status.type, competitors:[.competitors[]|{id,homeAway,winner,score,team:(.team|{id,shortDisplayName,logos:(.logos|length)})}]})}' /tmp/b.json | cut -c1-1200
-          g "$S/baseball/college-softball/scoreboard?dates=20260301&limit=1000"
-          jq -c '[.events[0:4][].competitions[0].competitors[].team | {id, abbreviation, displayName}]' /tmp/b.json | cut -c1-900
-          ID=$(jq -r '.events[0].competitions[0].competitors[0].team.id' /tmp/b.json)
-          for q in "" "?season=2026"; do g "$S/baseball/college-softball/teams/$ID/schedule$q"; sch; head -c 200 /tmp/b.json; echo; done
-          g "$C/baseball/leagues/college-softball/seasons/2026/teams/$ID/events?limit=200"; jq -c '{count}' /tmp/b.json
-          g "$S/baseball/college-softball/teams/$ID"; head -c 300 /tmp/b.json; echo
-          g "$S/baseball/college-softball/scoreboard?dates=20260301&limit=1000&groups=50"; jq -c '{n:(.events|length)}' /tmp/b.json
-          g "$S/baseball/college-baseball/scoreboard?dates=20260301&limit=1000&groups=26"; jq -c '{n:(.events|length)}' /tmp/b.json
-          g "$S/baseball/college-softball/scoreboard?dates=202603&limit=1000"; jq -c '{n:(.events|length)}' /tmp/b.json
-          g "$S/baseball/college-softball/scoreboard?limit=1000"; jq -c '{n:(.events|length), cal:(.leagues[0]|{calendarStartDate,calendarEndDate, season})}' /tmp/b.json
+          cd app && npm ci && npm run build
+          (npx vite preview --port 4173 --strictPort &) ; sleep 3
+          cd .. && npm init -y >/dev/null && npm i playwright@1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          node shots/shoot.cjs
+          git config user.name probe && git config user.email probe@example.com
+          git add shots/*.png && git commit -qm "Screenshots" && git push
