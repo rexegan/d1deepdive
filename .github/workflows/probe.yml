@@ -5,18 +5,18 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - run: |
           set +e
-          W=https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete
-          P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=3&season=2026&group=80"
-          F='{c:.pagination.count, a:[.athletes[]?|{n:.athlete.displayName,g:(.categories[]|select(.name=="general")|.totals)}]}'
-          for x in "category=defense&sort=general.fumblesRecovered:desc" "category=defense&sort=defensive.fumblesRecovered:desc" "category=defense&sort=fumbles.fumblesRecovered:desc" "category=defense&sort=general.fumblesRecovered:desc&isqualified=false" "category=general&sort=general.fumblesRecovered:desc" "category=defense:general&sort=general.fumblesRecovered:desc" "category=defense&sort=defensive.fumblesForced:desc" "category=defense&sort=general.fumblesForced:desc&isqualified=false" "sort=general.fumblesRecovered:desc&isqualified=false" "category=defense&sort=defensiveGeneral.fumblesRecovered:desc"; do
-            echo "===== $x"
-            curl -s --compressed "$W?$P&$x" | jq -c "$F" | cut -c1-600
-          done
-          echo "===== limit 1000 defense pages"
-          curl -s --compressed "$W?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=1000&season=2026&group=80&category=defense&sort=defensive.totalTackles:desc" -o d.json -w "%{size_download}\n"
-          jq -c '{c:.pagination, n:(.athletes|length), fr:([.athletes[]|(.categories[]|select(.name=="general")|.totals[2]|tonumber? // 0)]|sort|reverse|.[0:5])}' d.json
-          jq -c '[.athletes[]|.athlete.teams[0].logos|length]|add' d.json
+          V=https://site.api.espn.com/apis/v2/sports
+          s() { echo "== $1"; curl -s --compressed "$1" | jq -c '[.. | objects | select(.entries?) | .entries[]] | {n:length, first:(.[0] | {t:.team.displayName, rec:([.stats[] | select(.type=="total" or .name=="overall") | .displayValue])})}' | cut -c1-300; }
+          s "$V/football/college-football/standings?group=80"
+          s "$V/football/college-football/standings?group=80&season=2025"
+          s "$V/football/college-football/standings?group=81&season=2024"
+          s "$V/basketball/mens-college-basketball/standings"
+          s "$V/basketball/mens-college-basketball/standings?season=2026"
+          s "$V/basketball/mens-college-basketball/standings?season=2025"
+          s "$V/baseball/college-baseball/standings"
+          s "$V/baseball/college-baseball/standings?season=2025"
+          s "$V/baseball/college-softball/standings?season=2026"
