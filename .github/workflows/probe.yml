@@ -13,13 +13,16 @@ jobs:
           g() { echo "== $1"; curl -s -D /tmp/h -o /tmp/b.json -w '%{http_code}\n' -H 'Origin: https://rexegan.github.io' "$1"; grep -i 'access-control-allow-origin' /tmp/h; }
           sch() { jq -c '{season:.season, req:.requestedSeason.year, n:(.events|length), first:.events[0].date, last:.events[-1].date, types:([.events[].seasonType.type]|unique), weeks:([.events[].week.number]|unique), ststates:([.events[].competitions[0].status.type.state]|group_by(.)|map({(.[0]):length})|add)}' /tmp/b.json | cut -c1-600; }
           for q in "" "?seasontype=2" "?seasontype=3" "?season=2025&seasontype=3" "?season=2025"; do g "$S/football/college-football/teams/333/schedule$q"; sch; done
-          for p in "basketball/mens-college-basketball/teams/150" "basketball/womens-college-basketball/teams/41"; do for q in "" "?seasontype=2" "?seasontype=3" "?season=2026" "?season=2026&seasontype=3" "?season=2027"; do g "$S/$p/schedule$q"; sch; done; done
-          jq -c '.events[0].competitions[0].competitors[0] | {id, homeAway, winner, score, team:(.team|{id,displayName,logos:(.logos|length)})}' /tmp/b.json | cut -c1-500
-          for p in "baseball/college-baseball/teams/85" "baseball/college-softball/teams/201"; do g "$S/$p/schedule"; head -c 300 /tmp/b.json; echo; g "$S/$p/schedule?season=2026"; head -c 300 /tmp/b.json; echo; done
-          for l in college-baseball college-softball; do
-            g "$C/baseball/leagues/$l/seasons/2026/teams/85/events?limit=200"; jq -c '{count, n:(.items|length), first:.items[0]}' /tmp/b.json | cut -c1-400
-            g "$C/baseball/leagues/$l/seasons/2026/teams/201/events?limit=200"; jq -c '{count, n:(.items|length), first:.items[0]}' /tmp/b.json | cut -c1-400
-            for d in "20260301" "20260301-20260307" "20260213-20260331"; do g "$S/baseball/$l/scoreboard?dates=$d&limit=1000"; jq -c '{n:(.events|length), first:.events[0].date, last:.events[-1].date, sz:(tostring|length), names:[.events[0:3][].shortName]}' /tmp/b.json | cut -c1-400; done
-            g "$S/baseball/$l/scoreboard?dates=20260301&limit=1000&groups=50"; jq -c '{n:(.events|length)}' /tmp/b.json
-          done
-          g "$C/baseball/leagues/college-baseball/seasons/2026/teams/85/events?limit=200"; jq -r '.items[0]["$ref"]' /tmp/b.json > /tmp/r; R=$(sed 's/^http:/https:/' /tmp/r); g "$R"; jq -c '{id, date, name, comps:(.competitions[0]|{status:.status["$ref"], competitors:[.competitors[]|{id, homeAway, winner, score:.score["$ref"]}]})}' /tmp/b.json | cut -c1-800
+          for q in "" "?seasontype=2" "?seasontype=3" "?season=2025&seasontype=3"; do g "$S/football/college-football/teams/333/schedule$q"; sch; done
+          for q in "" "?season=2026" "?season=2026&seasontype=3" "?seasontype=2"; do g "$S/baseball/college-baseball/teams/85/schedule$q"; sch; done
+          jq -c '.events[0] | {id,date,seasonType, comp:(.competitions[0]|{neutralSite, conferenceCompetition, status:.status.type, competitors:[.competitors[]|{id,homeAway,winner,score,team:(.team|{id,shortDisplayName,logos:(.logos|length)})}]})}' /tmp/b.json | cut -c1-1200
+          g "$S/baseball/college-softball/scoreboard?dates=20260301&limit=1000"
+          jq -c '[.events[0:4][].competitions[0].competitors[].team | {id, abbreviation, displayName}]' /tmp/b.json | cut -c1-900
+          ID=$(jq -r '.events[0].competitions[0].competitors[0].team.id' /tmp/b.json)
+          for q in "" "?season=2026"; do g "$S/baseball/college-softball/teams/$ID/schedule$q"; sch; head -c 200 /tmp/b.json; echo; done
+          g "$C/baseball/leagues/college-softball/seasons/2026/teams/$ID/events?limit=200"; jq -c '{count}' /tmp/b.json
+          g "$S/baseball/college-softball/teams/$ID"; head -c 300 /tmp/b.json; echo
+          g "$S/baseball/college-softball/scoreboard?dates=20260301&limit=1000&groups=50"; jq -c '{n:(.events|length)}' /tmp/b.json
+          g "$S/baseball/college-baseball/scoreboard?dates=20260301&limit=1000&groups=26"; jq -c '{n:(.events|length)}' /tmp/b.json
+          g "$S/baseball/college-softball/scoreboard?dates=202603&limit=1000"; jq -c '{n:(.events|length)}' /tmp/b.json
+          g "$S/baseball/college-softball/scoreboard?limit=1000"; jq -c '{n:(.events|length), cal:(.leagues[0]|{calendarStartDate,calendarEndDate, season})}' /tmp/b.json
