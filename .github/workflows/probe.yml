@@ -5,16 +5,15 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
       - run: |
           set +e
           W=https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete
-          P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=2&season=2026&group=80"
-          F='[.athletes[]|{n:.athlete.displayName,c:[.categories[]|select(.totals|map(select(.!="-"))|length>1)|{name,t:.totals}]}]'
-          for x in "category=offense:receiving&sort=receiving.receivingYards:desc" "category=specialTeams&sort=kicking.fieldGoalsMade:desc" "category=specialTeams:kicking&sort=kicking.fieldGoalsMade:desc" "category=specialteams:kicking&sort=kicking.fieldGoalsMade:desc" "category=kicking&sort=kicking.fieldGoalsMade:desc" "category=special:kicking&sort=kicking.fieldGoalsMade:desc" "category=specialTeams:punting&sort=punting.grossAvgPuntYards:desc" "category=specialTeams:returning&sort=returning.kickReturnYards:desc" "category=returning&sort=returning.kickReturnYards:desc" "category=punting&sort=punting.grossAvgPuntYards:desc" "category=defense:defensiveinterceptions&sort=defensiveinterceptions.interceptions:desc" "category=defense&sort=defensiveinterceptions.interceptions:desc"; do
-            echo "===== $x"
-            curl -s --compressed "$W?$P&$x" | jq -c "$F" | cut -c1-1500
-          done
-          echo "===== 2025 no category"
-          curl -s --compressed "$W?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=2&season=2025&group=80&sort=passing.passingYards:desc" | jq -c "$F" | cut -c1-1500
+          P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=3&season=2026&group=80"
+          while read -r q k; do
+            cat=${k%%.*}; st=${k#*.}
+            r=$(curl -s --compressed "$W?$P&$q" | jq -r --arg c "$cat" --arg s "$st" '(.categories[]?|select(.name==$c)|.names|index($s)) as $i | [.athletes[]?|(.athlete.displayName+"="+((.categories[]|select(.name==$c)|.totals[$i])//"?"))]|join(", ")')
+            echo "$q => ${r:-NONE} (count $(curl -s --compressed "$W?$P&$q" | jq '.pagination.count'))"
+          done < fx-sorts.txt
