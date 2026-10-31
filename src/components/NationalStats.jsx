@@ -148,7 +148,12 @@ async function membersOf(sport, group) {
 
 function PlayerStats({ sport, tab, sortCol, group, onSort, onPlayer }) {
   const basketball = !sport.byWeek
-  const fetchSort = basketball ? (sortCol.fetch ?? sortCol.k) : (sortCol.sk ?? sortCol.k)
+  // A tab with a pool is fetched once by its pool stat and ranked here.
+  const fetchSort = basketball
+    ? (sortCol.fetch ?? sortCol.k)
+    : tab.pool
+      ? tab.pool.sort
+      : (sortCol.sk ?? sortCol.k)
   const { data, error, loading, refresh } = useData(
     async () => {
       const [stats, members] = await Promise.all([
@@ -156,7 +161,7 @@ function PlayerStats({ sport, tab, sortCol, group, onSort, onPlayer }) {
           sort: fetchSort,
           category: tab.category,
           // A conference is filtered from the national list, so pull a deeper one.
-          limit: basketball ? 400 : group === '80' ? 250 : 600,
+          limit: basketball ? 400 : (tab.pool?.limit ?? (group === '80' ? 250 : 600)),
         }),
         membersOf(sport, group),
       ])

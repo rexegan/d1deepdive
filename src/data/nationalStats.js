@@ -75,18 +75,41 @@ const FB_PLAYERS = [
     ],
   },
   {
-    id: 'defense',
+    id: 'tackles',
     category: 'defense',
-    label: 'Defense',
+    label: 'Tackles',
     sort: 'defensive.totalTackles',
     cols: [
       c('general.gamesPlayed', 'GP', 'Games played', { noSort: true }),
       c('defensive.totalTackles', 'TOT', 'Total tackles'),
       c('defensive.soloTackles', 'SOLO', 'Solo tackles'),
       c('defensive.assistTackles', 'AST', 'Assisted tackles'),
-      c('defensive.sacks', 'SACK', 'Sacks'),
       c('defensive.tacklesForLoss', 'TFL', 'Tackles for loss'),
       c('defensive.passesDefended', 'PD', 'Passes defended'),
+      c('defensive.sacks', 'SACK', 'Sacks'),
+    ],
+  },
+  {
+    id: 'sacks',
+    category: 'defense',
+    label: 'Sacks',
+    sort: 'defensive.sacks',
+    cols: [
+      c('general.gamesPlayed', 'GP', 'Games played', { noSort: true }),
+      c('defensive.sacks', 'SACK', 'Sacks'),
+      c('defensive.sackYards', 'SCK YDS', 'Sack yards'),
+      c('defensive.tacklesForLoss', 'TFL', 'Tackles for loss'),
+      c('defensive.totalTackles', 'TOT', 'Total tackles'),
+      c('general.fumblesForced', 'FF', 'Forced fumbles', { noSort: true }),
+    ],
+  },
+  {
+    id: 'interceptions',
+    category: 'defense',
+    label: 'Interceptions',
+    sort: 'defensiveinterceptions.interceptions',
+    cols: [
+      c('general.gamesPlayed', 'GP', 'Games played', { noSort: true }),
       c('defensiveinterceptions.interceptions', 'INT', 'Interceptions', { sk: 'defensiveInterceptions.interceptions' }),
       c('defensiveinterceptions.interceptionYards', 'INT YDS', 'Interception return yards', {
         sk: 'defensiveInterceptions.interceptionYards',
@@ -94,8 +117,26 @@ const FB_PLAYERS = [
       c('defensiveinterceptions.interceptionTouchdowns', 'INT TD', 'Pick-sixes', {
         sk: 'defensiveInterceptions.interceptionTouchdowns',
       }),
-      c('general.fumblesForced', 'FF', 'Forced fumbles', { noSort: true }),
-      c('general.fumblesRecovered', 'FR', 'Fumbles recovered', { noSort: true }),
+      c('defensive.longInterception', 'LNG', 'Longest interception return', { noSort: true }),
+      c('defensive.passesDefended', 'PD', 'Passes defended'),
+      c('defensive.totalTackles', 'TOT', 'Total tackles'),
+    ],
+  },
+  {
+    // ESPN can't rank by fumble stats, so this tab pulls the top 1,000
+    // tacklers (pool) and ranks them here.
+    id: 'fumbles',
+    category: 'defense',
+    label: 'Fumble Recovery',
+    sort: 'general.fumblesRecovered',
+    pool: { sort: 'defensive.totalTackles', limit: 1000 },
+    cols: [
+      c('general.gamesPlayed', 'GP', 'Games played', { noSort: true }),
+      c('general.fumblesRecovered', 'FR', 'Fumbles recovered'),
+      c('general.fumblesForced', 'FF', 'Forced fumbles'),
+      c('general.fumblesTouchdowns', 'FUM TD', 'Fumble return touchdowns'),
+      c('defensive.totalTackles', 'TOT', 'Total tackles'),
+      c('defensive.sacks', 'SACK', 'Sacks'),
     ],
   },
   {
