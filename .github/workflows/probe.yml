@@ -5,13 +5,32 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - run: |
           set +e
-          S=https://site.api.espn.com/apis/site/v2/sports
-          for x in "football/college-football 401859185" "football/college-football 401856842" "basketball/mens-college-basketball 401920982" "baseball/college-baseball 401848643"; do
-            set -- $x
-            echo "===== $1 $2"
-            curl -s --compressed "$S/$1/summary?event=$2" | jq -c 'walk(if type=="object" then del(.links, .link, .logos, .tracking) else . end) | {pickcenter, odds, predictor, header:{competitions:[.header.competitions[0]|del(.details)]}, gameInfo}'
-          done
+          W=https://site.web.api.espn.com/apis/common/v3/sports
+          L=https://site.web.api.espn.com/apis/site/v3/sports
+          P="region=us&lang=en&contentorigin=espn"
+          probe() {
+            echo "===== $1"
+            curl -s --compressed -D /tmp/h -o /tmp/b -H "Origin: https://rexegan.github.io" "$1"
+            head -1 /tmp/h; grep -i "access-control-allow-origin" /tmp/h
+            jq -c "$2" /tmp/b 2>&1 | cut -c1-3500
+          }
+          A='{keys:keys, cats:[.categories[]?|{name,displayName,labels,names:.names}], pag:.pagination, first:(.athletes[0]|{athlete:(.athlete|{id,displayName,teamShortName,teamId,position:.position.abbreviation,headshot:.headshot.href,teamLogos:(.teamLogos|length)}),categories:[.categories[]|{name,totals,ranks}]})}'
+          T='{keys:keys, cats:[.categories[]?|{name,displayName,names}], pag:.pagination, n:(.teams|length), first:(.teams[0]|{team:(.team|{id,displayName,abbreviation,logos:(.logos|length)}),categories:[.categories[]|{name,values,totals,ranks}]})}'
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=50&group=80&sort=passing.passingYards:desc&season=2026&seasontype=2" "$A"
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=true&page=1&limit=50&category=offense:passing&sort=passing.passingYards:desc&season=2026&seasontype=2" "$A"
+          probe "$W/football/college-football/statistics/byathlete?$P&isqualified=false&page=1&limit=50&group=80&category=defense&sort=defensive.sacks:desc&season=2026&seasontype=2" "$A"
+          probe "$W/football/college-football/statistics/byteam?$P&page=1&limit=50&group=80&sort=team.scoring.totalPointsPerGame:desc&season=2026&seasontype=2" "$T"
+          probe "$W/football/college-football/statistics/byteam?$P&season=2026&seasontype=2" "$T"
+          probe "$W/basketball/mens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&group=50&sort=offensive.avgPoints:desc&season=2026&seasontype=2" "$A"
+          probe "$W/basketball/mens-college-basketball/statistics/byteam?$P&page=1&limit=50&group=50&season=2026&seasontype=2" "$T"
+          probe "$W/basketball/womens-college-basketball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&group=50&sort=offensive.avgPoints:desc&season=2026&seasontype=2" "$A"
+          probe "$W/baseball/college-baseball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&season=2026&seasontype=2" "$A"
+          probe "$W/baseball/college-softball/statistics/byathlete?$P&isqualified=true&page=1&limit=50&season=2026&seasontype=2" "$A"
+          probe "$L/football/college-football/leaders?season=2026&group=80&limit=50" '{n:[.leaders.categories[]|{name,displayName,c:(.leaders|length)}]}'
+          probe "$L/basketball/mens-college-basketball/leaders?season=2026&limit=50" '{n:[.leaders.categories[]|{name,displayName,c:(.leaders|length)}]}'
+          probe "$L/football/college-football/teamleaders?season=2026&group=80" 'keys'
+          probe "https://site.api.espn.com/apis/site/v2/sports/football/college-football/statistics?season=2026&group=80" 'keys'
