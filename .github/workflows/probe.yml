@@ -2,6 +2,8 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -10,10 +12,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           set +e
-          W=https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete
-          P="region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=3&season=2026&group=80"
-          while read -r q k; do
-            cat=${k%%.*}; st=${k#*.}
-            r=$(curl -s --compressed "$W?$P&$q" | jq -r --arg c "$cat" --arg s "$st" '(.categories[]?|select(.name==$c)|.names|index($s)) as $i | [.athletes[]?|(.athlete.displayName+"="+((.categories[]|select(.name==$c)|.totals[$i])//"?"))]|join(", ")')
-            echo "$q => ${r:-NONE} (count $(curl -s --compressed "$W?$P&$q" | jq '.pagination.count'))"
-          done < fx-sorts.txt
+          mkdir -p fx2
+          while read -r u; do
+            [ -z "$u" ] && continue
+            h=$(printf '%s' "$u" | sha1sum | cut -c1-40)
+            curl -s --compressed -o "fx2/$h.json" -w "%{http_code} %{size_download} $u\n" "$u"
+          done < fx-urls2.txt
+          B="https://site.web.api.espn.com/apis/common/v3/sports/basketball/womens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=3&season=2026&group=50"
+          while read -r k; do
+            echo "$k => $(curl -s --compressed "$B&sort=$k:desc" | jq -c '[.athletes[]?|[.athlete.displayName,.categories[0].totals[0]]]')"
+          done < fx-bbsorts.txt
+          git config user.name probe && git config user.email probe@example.com
+          git add fx2 && git commit -qm "Stats fixtures 2" && git push

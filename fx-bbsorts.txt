@@ -1,0 +1,15 @@
+general.minutes
+offensive.points
+offensive.fieldGoalsMade
+offensive.fieldGoalsAttempted
+offensive.threePointFieldGoalsMade
+offensive.threePointFieldGoalsAttempted
+offensive.freeThrowsMade
+general.rebounds
+offensive.assists
+offensive.turnovers
+general.doubleDouble
+general.tripleDouble
+defensive.steals
+defensive.blocks
+general.fouls
