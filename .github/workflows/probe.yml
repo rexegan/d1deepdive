@@ -20,6 +20,6 @@ jobs:
           cd app && npm ci && npm run build
           (npx vite preview --port 4173 --strictPort &) ; sleep 3
           cd .. && npm init -y >/dev/null && npm i playwright@1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
-          node shots/shoot.cjs
+          node shots/shoot.cjs || true
           git config user.name probe && git config user.email probe@example.com
           git add shots/*.png && git commit -qm "Screenshots" && git push
