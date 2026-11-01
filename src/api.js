@@ -868,6 +868,36 @@ export const programWikiTitle = (sport, teamName) => `${teamName} ${PROGRAM_SUFF
 const CORE_SPORTS = 'https://sports.core.api.espn.com/v2/sports'
 
 /** Head coach from ESPN's core API (the only coach ESPN publishes), plus a Wikipedia bio. */
+// A team's overall W-L for each season, from ESPN's core API. The postseason
+// (type 3) record is cumulative, so it's preferred once that season has one.
+const seasonRecordCache = new Map()
+
+function recordSummary(raw) {
+  const total = raw?.items?.find((i) => i.type === 'total' || i.name === 'overall')
+  return total?.summary && RECORD.test(total.summary) ? total.summary : null
+}
+
+const gamesIn = (rec) => (rec ? rec.split('-').reduce((n, x) => n + Number(x), 0) : -1)
+
+/** Returns [{ year, record }] for the given years; record is null when ESPN has none. */
+export function fetchSeasonRecords(sport, teamId, years) {
+  const [sp, league] = sport.path.split('/')
+  return Promise.all(
+    years.map((year) => {
+      const key = `${sport.id}:${teamId}:${year}`
+      if (!seasonRecordCache.has(key)) {
+        const url = (type) => `${CORE_SPORTS}/${sp}/leagues/${league}/seasons/${year}/types/${type}/teams/${teamId}/record`
+        const one = (type) => getJSON(url(type)).then(recordSummary, () => null)
+        seasonRecordCache.set(
+          key,
+          Promise.all([one(2), one(3)]).then(([reg, post]) => (gamesIn(post) >= gamesIn(reg) ? post : reg)),
+        )
+      }
+      return seasonRecordCache.get(key).then((record) => ({ year, record }))
+    }),
+  )
+}
+
 export async function fetchHeadCoach(sport, teamId, seasonYear) {
   const [sp, league] = sport.path.split('/')
   const year = seasonYear ?? new Date().getFullYear()

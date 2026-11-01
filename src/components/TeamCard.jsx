@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchRecords, fetchTeam, schoolSiteUrl, seasonLabel, sportById } from '../api.js'
+import { fetchRecords, fetchSeasonRecords, fetchTeam, schoolSiteUrl, seasonLabel, sportById } from '../api.js'
 import Roster, { PlayerView } from './Roster.jsx'
 import FunFacts from './FunFacts.jsx'
 import Coaches from './Coaches.jsx'
@@ -62,16 +62,26 @@ function Schedule({ sport, team, season, setSeason }) {
   const done = team.games.filter((g) => g.state === 'post')
   const upcoming = team.games.filter((g) => g.state !== 'post')
   const cur = team.currentSeason
-  const years = cur ? [cur, cur - 1, cur - 2] : []
+  // This season and the ten before it, each with that year's W-L underneath.
+  const years = cur ? Array.from({ length: 11 }, (_, i) => cur - i) : []
+  const { data: yearRecords } = useData(() => fetchSeasonRecords(sport, team.id, years), [sport.id, team.id, cur])
+  const recordFor = (y) => yearRecords?.find((r) => r.year === y)?.record
   return (
     <section className="tc-section tc-sched">
       <div className="tc-sched-head">
         <h4>Schedule & results{team.season ? ` · ${team.season}` : ''}</h4>
         {years.length > 0 && (
-          <div className="seg small">
+          <div className="tc-years" role="tablist" aria-label="Season">
             {years.map((y) => (
-              <button key={y} className={(season ?? cur) === y ? 'on' : ''} onClick={() => setSeason(y === cur ? null : y)}>
-                {seasonLabel(sport, y)}
+              <button
+                key={y}
+                role="tab"
+                aria-selected={(season ?? cur) === y}
+                className={(season ?? cur) === y ? 'on' : ''}
+                onClick={() => setSeason(y === cur ? null : y)}
+              >
+                <span className="tc-year">{seasonLabel(sport, y)}</span>
+                <span className="tc-year-rec">{recordFor(y) ?? (yearRecords ? '—' : '…')}</span>
               </button>
             ))}
           </div>
