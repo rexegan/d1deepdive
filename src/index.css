@@ -1095,17 +1095,31 @@ table.standings .left {
 
 .tc-years {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   width: 100%;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
 }
 
-@media (min-width: 700px) {
+/* Phones: five seasons per row. */
+@media (max-width: 699px) {
   .tc-years {
-    flex-wrap: wrap;
-    overflow: visible;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .tc-years button {
+    min-width: 0;
+    padding: 6px 2px;
+  }
+
+  .tc-year {
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .tc-year.long {
+    font-size: 0.7rem;
+    letter-spacing: -0.02em;
   }
 }
 

@@ -80,7 +80,7 @@ function Schedule({ sport, team, season, setSeason }) {
                 className={(season ?? cur) === y ? 'on' : ''}
                 onClick={() => setSeason(y === cur ? null : y)}
               >
-                <span className="tc-year">{seasonLabel(sport, y)}</span>
+                <span className={`tc-year${seasonLabel(sport, y).length > 4 ? ' long' : ''}`}>{seasonLabel(sport, y)}</span>
                 <span className="tc-year-rec">{recordFor(y) ?? (yearRecords ? '—' : '…')}</span>
               </button>
             ))}
