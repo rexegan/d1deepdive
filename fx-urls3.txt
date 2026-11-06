@@ -1,0 +1,17 @@
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=1000&groups=80
+https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=1000&dates=20261106&groups=50
+https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?limit=1000&dates=20261106&groups=50
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings
+https://site.web.api.espn.com/apis/site/v3/sports/football/college-football/leaders?season=2026&group=80
+https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/rankings
+https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/rankings
+https://site.web.api.espn.com/apis/common/v3/sports/basketball/mens-college-basketball/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=400&sort=offensive.points:desc&season=2026&group=50
+https://site.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings?group=50
+https://site.api.espn.com/apis/v2/sports/basketball/mens-college-basketball/standings?group=50&season=2027
+https://site.api.espn.com/apis/v2/sports/basketball/womens-college-basketball/standings?group=50
+https://site.api.espn.com/apis/v2/sports/basketball/womens-college-basketball/standings?group=50&season=2027
+https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80
+https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=81
+https://site.api.espn.com/apis/v2/sports/baseball/college-softball/standings?
+https://site.api.espn.com/apis/v2/sports/baseball/college-softball/standings?season=2026
+https://site.api.espn.com/apis/v2/sports/baseball/college-baseball/standings?season=2026

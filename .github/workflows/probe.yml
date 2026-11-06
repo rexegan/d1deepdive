@@ -8,7 +8,12 @@ jobs:
     timeout-minutes: 3
     steps:
       - run: |
-          B=https://rexegan.github.io/d1deepdive/
-          curl -sI $B | grep -i 'cache-control\|last-modified\|age:'
-          JS=$(curl -s $B | grep -o 'assets/index-[^"]*\.js' | head -1); echo "bundle $JS"
-          curl -s "$B$JS" | grep -o 'tc-years\|tc-year-rec\|opp-rec' | sort | uniq -c
+          set +e
+          mkdir -p fx3
+          while read -r u; do
+            [ -z "$u" ] && continue
+            h=$(printf '%s' "$u" | sha1sum | cut -c1-40)
+            curl -s --compressed -o "fx3/$h.json" -w "%{http_code} %{size_download} $u\n" "$u"
+          done < fx-urls3.txt
+          git config user.name probe && git config user.email probe@example.com
+          git add fx3 && git commit -qm "Conference fixtures" && git push
