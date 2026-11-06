@@ -4,6 +4,7 @@ import { buildHash, useData, useFavorites } from '../hooks.js'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
+import ConfTag from './ConfTag.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 function Move({ rank, previous }) {
@@ -73,7 +74,7 @@ export default function Rankings({ sport, params }) {
 
     const poll = data.polls.find((p) => p.id === pollId) ?? data.polls[0]
     const ranks = poll.ranks.filter(
-      (r) => (!data.members || data.members.has(String(r.team.id))) && matchesTeam(r.team, query),
+      (r) => (!data.members || data.members.has(r.team)) && matchesTeam(r.team, query),
     )
 
     return (
@@ -109,6 +110,7 @@ export default function Rankings({ sport, params }) {
                     </TeamName>
                   </strong>
                   <span className="muted">
+                    <ConfTag sport={sport} team={r.team} />
                     {r.record}
                     {r.firstPlace ? ` · ${r.firstPlace} first-place` : ''}
                   </span>

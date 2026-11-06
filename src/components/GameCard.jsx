@@ -1,6 +1,7 @@
 import TeamLogo from './TeamLogo.jsx'
 import { useFavorites } from '../hooks.js'
 import TeamName from './TeamName.jsx'
+import ConfTag from './ConfTag.jsx'
 import { isCloseGame } from '../api.js'
 import { openGame } from '../team.js'
 
@@ -23,6 +24,7 @@ function TeamRow({ team, sport, game }) {
       <div className="team-name">
         {team.rank && <span className="rank">{team.rank}</span>}
         <TeamName sport={sport} team={team} className="name" />
+        <ConfTag sport={sport} team={team} />
         {team.possession && <span className="poss" title="Possession">●</span>}
         {team.record && <span className="record">{team.record}</span>}
       </div>

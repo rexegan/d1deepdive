@@ -4,6 +4,7 @@ import { buildHash, useData } from '../hooks.js'
 import { Headshot, PlayerView } from './Roster.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
+import ConfTag from './ConfTag.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 // Football leaders can be narrowed to a division or conference (ESPN group ids).
@@ -59,6 +60,7 @@ function Category({ sport, cat, onPlayer }) {
           <span className="ll-team">
             <TeamLogo src={top.team?.logo} size={18} sport={sport.id} team={top.team} />
             <TeamName sport={sport.id} team={top.team} />
+            <ConfTag sport={sport} team={top.team} />
             <span className="muted">
               {[top.position, top.jersey && `#${top.jersey}`].filter(Boolean).join(' · ')}
             </span>
@@ -78,7 +80,8 @@ function Category({ sport, cat, onPlayer }) {
               <span>
                 <span className="ll-pname">{l.name}</span>
                 <span className="muted tiny ll-sub">
-                  <TeamLogo src={l.team?.logo} size={14} /> {l.team?.abbr} {l.position && `· ${l.position}`}
+                  <TeamLogo src={l.team?.logo} size={14} /> {l.team?.abbr} <ConfTag sport={sport} team={l.team} />{' '}
+                  {l.position && `· ${l.position}`}
                 </span>
               </span>
             </button>

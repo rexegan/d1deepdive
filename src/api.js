@@ -151,7 +151,8 @@ export const SPORTS = [
     path: 'baseball/college-baseball',
     divisions: [],
     // ESPN has no conference data for college baseball, so conference
-    // membership is borrowed from men's basketball (ESPN team ids are shared).
+    // membership is borrowed from men's basketball, matched by team name
+    // (baseball and softball team ids differ from basketball's).
     confFrom: 'mbb',
     noRankings: true,
     quickLeagues: ['top25', '8', '7', '21', '23'],
@@ -275,13 +276,22 @@ export function leagueInfo(sport, id) {
 export const conferencesOf = (sport) =>
   (sport.leagues ?? []).filter((l) => l.id !== 'top25' && !DIVISION_IDS.has(l.id))
 
-/** Team ids in a conference, from standings (or the borrowed sport's standings). */
+/**
+ * A conference's members, from standings, as { has(team) }. Baseball and
+ * softball borrow basketball's conferences and match teams by name, since
+ * their team ids differ.
+ */
 export async function conferenceMembers(sport, league) {
-  const source = sport.confFrom ? sportById(sport.confFrom) : sport
+  if (sport.confFrom) {
+    const map = await fetchConferenceMap(sport)
+    const group = map.groups.find((g) => groupMatches(g, league))
+    return { has: (team) => !!group && conferenceOf(map, team) === group.label }
+  }
   // Football standings are split by division; other sports return all of D1.
   const division = sport.byWeek ? league.division : undefined
-  const groups = await fetchStandings(source, division)
-  return new Set(groups.filter((g) => groupMatches(g, league)).flatMap((g) => g.entries.map((e) => String(e.team.id))))
+  const groups = await fetchStandings(sport, division)
+  const ids = new Set(groups.filter((g) => groupMatches(g, league)).flatMap((g) => g.entries.map((e) => String(e.team.id))))
+  return { has: (team) => team?.id != null && ids.has(String(team.id)) }
 }
 
 /** Does a standings group correspond to this league picker entry? */
@@ -525,7 +535,7 @@ function sortEntries(entries) {
   )
 }
 
-function collectGroups(node, prefix, out) {
+function collectGroups(node, prefix, out, top = node) {
   const label = prefix && node.name !== prefix ? `${prefix} · ${node.name}` : node.name
   const entries = node.standings?.entries
   if (entries?.length) {
@@ -533,10 +543,14 @@ function collectGroups(node, prefix, out) {
       id: node.id ?? label,
       name: label,
       abbr: node.abbreviation ?? '',
+      // The conference this table belongs to (a division's parent conference).
+      confId: top.id ?? node.id ?? label,
+      confName: top.name ?? label,
+      confAbbr: top.abbreviation ?? node.abbreviation ?? '',
       entries: sortEntries(entries.map(normalizeEntry)),
     })
   }
-  for (const child of node.children ?? []) collectGroups(child, label, out)
+  for (const child of node.children ?? []) collectGroups(child, label, out, top)
   return out
 }
 
@@ -561,6 +575,70 @@ export async function fetchRecords(sport, season) {
     if (l.status === 'fulfilled')
       for (const g of l.value) for (const e of g.entries) if (e.overall) records.set(String(e.team.id), e.overall)
   return records
+}
+
+// ---------- conference labels for team lists ----------
+
+const confMaps = new Map()
+// Shorter tags for the longer conference names.
+const SHORT_CONF = {
+  'Conference USA': 'CUSA',
+  'Metro Atlantic': 'MAAC',
+  'Missouri Valley': 'MVC',
+  'Horizon League': 'Horizon',
+  'Summit League': 'Summit',
+  'Patriot League': 'Patriot',
+  'Ivy League': 'Ivy',
+  'FBS Independents': 'Independent',
+  'FCS Independents': 'Independent',
+}
+const nameKey = (n) => n?.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/**
+ * Every team's conference as a short label ("SEC", "Big 12"), keyed by team id
+ * and by name, plus the conferences themselves ({ id, name, abbr, label }).
+ * Built from standings; baseball and softball borrow basketball's conferences
+ * and match on names only, since their team ids differ from basketball's.
+ */
+export function fetchConferenceMap(sport) {
+  if (confMaps.has(sport.id)) return confMaps.get(sport.id)
+  const source = sport.confFrom ? sportById(sport.confFrom) : sport
+  const divisions = source.divisions.length ? source.divisions.map((d) => d.id) : [undefined]
+  const p = Promise.allSettled(divisions.map((d) => fetchStandings(source, d))).then((lists) => {
+    const byId = new Map()
+    const byName = new Map()
+    const confs = new Map()
+    const leagues = conferencesOf(source)
+    const groups = lists.flatMap((l) => (l.status === 'fulfilled' ? l.value : []))
+    for (const g of groups) {
+      const conf = { id: String(g.confId), name: g.confName, abbr: g.confAbbr }
+      const league =
+        leagues.find((l) => l.id === conf.id) ?? leagues.find((l) => groupMatches(conf, l))
+      const full = (league?.label ?? (conf.abbr || conf.name)).replace(/ \(.*\)$/, '')
+      const label = SHORT_CONF[full] ?? full
+      if (!confs.has(conf.id)) confs.set(conf.id, { ...conf, label })
+      for (const e of g.entries) {
+        if (e.team.id) byId.set(String(e.team.id), label)
+        for (const n of [e.team.name, e.team.fullName]) {
+          const k = nameKey(n)
+          // Two teams sharing a short name (rare) can't be told apart: drop it.
+          if (k) byName.set(k, byName.has(k) && byName.get(k) !== label ? null : label)
+        }
+      }
+    }
+    if (!byId.size) confMaps.delete(sport.id) // retry on the next visit
+    return { byId, byName, groups: [...confs.values()], namesOnly: !!sport.confFrom }
+  })
+  confMaps.set(sport.id, p)
+  return p
+}
+
+/** A team's conference label from a map built by fetchConferenceMap. */
+export function conferenceOf(map, team) {
+  if (!map || !team) return null
+  const byName = () => [team.name, team.fullName, team.location].map((n) => map.byName.get(nameKey(n))).find(Boolean)
+  const byId = () => (team.id != null ? map.byId.get(String(team.id)) : null)
+  return (map.namesOnly ? byName() : byId() || byName()) ?? null
 }
 
 // ---------- team detail ----------

@@ -5,6 +5,7 @@ import { buildHash, useData, useFavorites } from '../hooks.js'
 import { Headshot, PlayerView } from './Roster.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
+import ConfTag from './ConfTag.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 // Football can be narrowed to a division or conference (ESPN group ids).
@@ -100,6 +101,7 @@ function StatTable({ sport, rows, cols, sortCol, onSort, kind, onPlayer }) {
                             <TeamName sport={sport.id} team={team}>
                               {team?.abbr ?? team?.name}
                             </TeamName>
+                            <ConfTag sport={sport} team={team} />
                             {r.position && <span>· {r.position}</span>}
                           </span>
                         </span>
@@ -110,6 +112,7 @@ function StatTable({ sport, rows, cols, sortCol, onSort, kind, onPlayer }) {
                         <TeamName sport={sport.id} team={team} className="ns-tname">
                           {team.name}
                         </TeamName>
+                        <ConfTag sport={sport} team={team} />
                       </span>
                     )}
                   </td>
@@ -165,7 +168,7 @@ function PlayerStats({ sport, tab, sortCol, group, onSort, onPlayer }) {
         }),
         membersOf(sport, group),
       ])
-      return { ...stats, rows: members ? stats.rows.filter((r) => members.has(String(r.team?.id))) : stats.rows }
+      return { ...stats, rows: members ? stats.rows.filter((r) => members.has(r.team)) : stats.rows }
     },
     [sport.id, fetchSort, tab.category, group],
   )
@@ -192,7 +195,7 @@ function TeamStats({ sport, tab, sortCol, group, onSort }) {
   const { data, error, loading, refresh } = useData(
     async () => {
       const [stats, members] = await Promise.all([fetchTeamStats(sport), membersOf(sport, group)])
-      return { ...stats, rows: members ? stats.rows.filter((r) => members.has(String(r.team.id))) : stats.rows }
+      return { ...stats, rows: members ? stats.rows.filter((r) => members.has(r.team)) : stats.rows }
     },
     [sport.id, group],
   )

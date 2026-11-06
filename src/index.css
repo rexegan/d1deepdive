@@ -2652,3 +2652,22 @@ table.ns-table {
 .ll-filters .seg button {
   white-space: nowrap;
 }
+
+/* Conference tag beside team names in lists ("SEC", "Big 12"). */
+.conf-tag {
+  display: inline-block;
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.team-cell .muted .conf-tag {
+  margin-right: 6px;
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fetchRankings, fetchStandings, groupMatches, leagueInfo, sportById } from '../api.js'
+import { conferenceOf, fetchConferenceMap, fetchRankings, fetchStandings, groupMatches, leagueInfo } from '../api.js'
 import { buildHash, useData } from '../hooks.js'
 import LeagueBar, { SearchBox, matchesTeam } from './LeagueBar.jsx'
 import TeamLogo from './TeamLogo.jsx'
@@ -7,21 +7,23 @@ import TeamName from './TeamName.jsx'
 import { ErrorBox, Loading } from './Status.jsx'
 
 async function load(sport, division, withRanks) {
-  const [own, borrowed, polls] = await Promise.all([
+  const [own, confMap, polls] = await Promise.all([
     fetchStandings(sport, division),
-    sport.confFrom ? fetchStandings(sportById(sport.confFrom)) : null,
+    sport.confFrom ? fetchConferenceMap(sport) : null,
     withRanks && !sport.noRankings ? fetchRankings(sport).catch(() => []) : [],
   ])
   // Sports without conference standings: regroup their single D1 table by the
-  // borrowed sport's conferences.
+  // borrowed sport's conferences (matched by team name).
   let groups = own
-  if (borrowed) {
+  if (confMap) {
     const entries = own.flatMap((g) => g.entries)
-    groups = borrowed
-      .map((g) => {
-        const ids = new Set(g.entries.map((e) => String(e.team.id)))
-        return { ...g, entries: entries.filter((e) => ids.has(String(e.team.id))) }
-      })
+    groups = confMap.groups
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        abbr: c.abbr,
+        entries: entries.filter((e) => conferenceOf(confMap, e.team) === c.label),
+      }))
       .filter((g) => g.entries.length)
   }
   // Rank badges come from the first poll for this division (AP for FBS).

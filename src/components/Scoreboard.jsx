@@ -68,7 +68,7 @@ export default function Scoreboard({ sport, params }) {
         clientConf ? conferenceMembers(sport, league) : null,
       ])
       if (!members) return board
-      const inConf = (t) => t && members.has(String(t.id))
+      const inConf = (t) => t && members.has(t)
       return { ...board, events: board.events.filter((g) => inConf(g.home) || inConf(g.away)) }
     },
     [sport.id, date, week, st, division, league?.id],

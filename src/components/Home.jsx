@@ -3,6 +3,7 @@ import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import TeamName from './TeamName.jsx'
+import ConfTag from './ConfTag.jsx'
 import { EditTeamsButton } from './MyTeamsEditor.jsx'
 import { Loading, Updated } from './Status.jsx'
 
@@ -59,7 +60,7 @@ export default function Home() {
             <div className="fav-chips">
               {favs.map((f) => (
                 <span key={`${f.sport}:${f.id}`} className="chip">
-                  <TeamLogo src={f.logo} size={18} sport={f.sport} team={f} /> <TeamName sport={f.sport} team={f} />
+                  <TeamLogo src={f.logo} size={18} sport={f.sport} team={f} /> <TeamName sport={f.sport} team={f} /> <ConfTag sport={f.sport} team={f} />
                   <span className="muted"> · {SPORTS.find((s) => s.id === f.sport)?.short}</span>
                 </span>
               ))}
