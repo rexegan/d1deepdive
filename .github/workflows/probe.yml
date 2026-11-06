@@ -2,11 +2,14 @@ name: Probe live site
 on:
   push:
     branches: [probe-roster]
+permissions:
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@v4
       - run: |
           set +e
           mkdir -p fx3
