@@ -1,5 +1,5 @@
-https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byteam?region=us&lang=en&contentorigin=espn&seasontype=2&page=1&limit=200&season=2026
-https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=true&page=1&limit=50&sort=defensive.tacklesForLoss:desc&season=2026&group=80&category=defense
-https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=false&page=1&limit=5000&sort=defensive.tacklesForLoss:desc&season=2026&group=80&category=defense
-https://site.web.api.espn.com/apis/site/v3/sports/football/college-football/leaders?season=2026
-https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&limit=3
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?groups=80&limit=300
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/251/roster
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=401856849
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=false&page=3&limit=1000&sort=defensive.tacklesForLoss:desc&season=2026&group=80&category=defense
+https://site.web.api.espn.com/apis/common/v3/sports/football/college-football/statistics/byathlete?region=us&lang=en&contentorigin=espn&seasontype=2&isqualified=false&page=1&limit=1000&sort=defensive.tacklesForLoss:desc&season=2026&group=80&category=defense
