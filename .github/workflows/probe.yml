@@ -10,8 +10,13 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - run: |
           set +e
+          mkdir -p fx3
+          node scripts/build-defense.mjs && cp public/data/cfb-defense.json fx3/
           mkdir -p fx3
           while read -r u; do
             [ -z "$u" ] && continue
