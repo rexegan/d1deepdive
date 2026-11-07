@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Rebuild daily so the deploy-time data (team TFL, jersey numbers) stays current.
+  schedule:
+    - cron: '0 11 * * *'
 
 permissions:
   contents: read
@@ -25,6 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/build-draft.mjs
+      - run: node scripts/build-defense.mjs
       - run: npm run build
       - uses: actions/configure-pages@v5
         with:

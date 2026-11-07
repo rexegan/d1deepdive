@@ -94,6 +94,7 @@ function StatTable({ sport, rows, cols, sortCol, onSort, kind, onPlayer }) {
                         </button>
                         <span className="ns-names">
                           <button className="ns-pname" onClick={() => onPlayer(r)}>
+                            {r.jersey && <span className="ns-jersey">#{r.jersey}</span>}
                             {r.name}
                           </button>
                           <span className="ns-sub muted">
@@ -321,7 +322,13 @@ export default function NationalStats({ sport, params }) {
             </button>
             <PlayerView
               sport={sport}
-              player={{ id: player.id, name: player.name, position: player.position, headshot: player.headshot }}
+              player={{
+                id: player.id,
+                name: player.name,
+                jersey: player.jersey,
+                position: player.position,
+                headshot: player.headshot,
+              }}
               onBack={() => setPlayer(null)}
             />
           </aside>

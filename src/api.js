@@ -853,14 +853,28 @@ function normalizeStatsTable(s) {
 
 export async function fetchAthlete(sport, id) {
   const base = `${WEB}/${sport.path}/athletes/${id}`
-  const [info, overview] = await Promise.allSettled([getJSON(base), getJSON(`${base}/overview`)])
+  const [info, overview, def] = await Promise.allSettled([
+    getJSON(base),
+    getJSON(`${base}/overview`),
+    sport.byWeek ? fetchDefenseData() : null,
+  ])
   if (info.status === 'rejected') throw info.reason
   const a = info.value.athlete ?? {}
   const ov = overview.status === 'fulfilled' ? overview.value : {}
+  // ESPN's athlete feeds leave tackles for loss out, so add it from the deploy-time data.
+  const tfl = def.value ? tflTile(def.value, a.id ?? id) : null
+  const summaryStats = (a.statsSummary?.statistics ?? []).map((s) => ({
+    name: s.shortDisplayName ?? s.abbreviation ?? s.displayName,
+    full: s.displayName,
+    value: s.displayValue,
+    rank: s.rankDisplayValue ?? '',
+  }))
+  if (tfl) summaryStats.push(tfl)
+  const jersey = a.jersey ?? def.value?.jersey[a.id ?? id]
   return {
     id: a.id ?? id,
     name: a.displayName ?? a.fullName,
-    jersey: a.displayJersey ?? (a.jersey ? `#${a.jersey}` : ''),
+    jersey: a.displayJersey ?? (jersey ? `#${jersey}` : ''),
     position: a.position?.displayName ?? '',
     headshot: a.headshot?.href ?? null,
     height: a.displayHeight ?? '',
@@ -870,15 +884,10 @@ export async function fetchAthlete(sport, id) {
     team: a.team?.displayName ?? '',
     status: a.status?.name && a.status.name !== 'Active' ? a.status.name : '',
     link: a.links?.find((l) => l.rel?.includes('playercard'))?.href ?? a.links?.[0]?.href ?? null,
-    summary: a.statsSummary?.statistics?.length
+    summary: summaryStats.length
       ? {
-          title: a.statsSummary.displayName ?? 'Season stats',
-          stats: a.statsSummary.statistics.map((s) => ({
-            name: s.shortDisplayName ?? s.abbreviation ?? s.displayName,
-            full: s.displayName,
-            value: s.displayValue,
-            rank: s.rankDisplayValue ?? '',
-          })),
+          title: a.statsSummary?.displayName ?? (tfl ? `${def.value.season} season` : 'Season stats'),
+          stats: summaryStats,
         }
       : null,
     table: normalizeStatsTable(ov.statistics),
@@ -906,6 +915,33 @@ export function fetchDraft() {
     .then((r) => (r.ok ? r.json() : { byCollege: {} }))
     .catch(() => ({ byCollege: {} }))
   return draftPromise
+}
+
+let defensePromise = null
+/**
+ * Football extras built into the site at deploy time (scripts/build-defense.mjs):
+ * jersey numbers by athlete id, team tackles for loss, and each player's TFL.
+ */
+export function fetchDefenseData() {
+  defensePromise ??= fetch('./data/cfb-defense.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .then((d) => ({
+      season: d?.season ?? null,
+      jersey: d?.jersey ?? {},
+      tfl: d?.tfl ?? {},
+      player: d?.player ?? {},
+      teams: d?.teams ?? {},
+    }))
+  return defensePromise
+}
+
+/** A player's TFL tile for the profile: this season's total and national rank. */
+function tflTile(def, id) {
+  const v = def.player[id]?.[0]
+  if (v == null) return null
+  const rank = Object.values(def.player).filter(([x]) => x > v).length + 1
+  return { name: 'TFL', full: 'Tackles for loss', value: String(v), rank: ordinal(rank) }
 }
 
 export async function draftPicksFor(team) {
@@ -1343,7 +1379,7 @@ export const LEADER_SECTIONS = {
     { title: 'Quarterbacks', icon: '🎯', cats: ['passingYards', 'passingTouchdowns', 'quarterbackRating'] },
     { title: 'Running backs', icon: '💨', cats: ['rushingYards', 'rushingTouchdowns'] },
     { title: 'Wide receivers', icon: '🙌', cats: ['receivingYards', 'receptions', 'receivingTouchdowns'] },
-    { title: 'Defense', icon: '🛡️', cats: ['totalTackles', 'sacks', 'interceptions', 'interceptionYards'] },
+    { title: 'Defense', icon: '🛡️', cats: ['totalTackles', 'tacklesForLoss', 'sacks', 'interceptions', 'interceptionYards'] },
     { title: 'Kickers', icon: '🦵', cats: ['kickoffYards'] },
   ],
   basketball: [
@@ -1356,7 +1392,43 @@ export const LEADER_SECTIONS = {
 }
 
 const PCT_CATS = new Set(['3PointPct', 'FreeThrowPct'])
-const LEADER_LABELS = { quarterbackRating: 'Passer Rating', kickoffYards: 'Kickoff Yards', doubleDouble: 'Double-Doubles' }
+const LEADER_LABELS = {
+  quarterbackRating: 'Passer Rating',
+  kickoffYards: 'Kickoff Yards',
+  doubleDouble: 'Double-Doubles',
+  tacklesForLoss: 'Tackles For Loss',
+}
+
+/**
+ * ESPN's leaders feed has no tackles-for-loss board, so build one from the
+ * deploy-time TFL numbers (FBS only), narrowed to a conference if one is picked.
+ */
+async function tflLeaders(sport, season, group) {
+  const def = await fetchDefenseData()
+  if (def.season !== season || (group && group !== '80' && !leagueInfo(sport, group)?.conference)) return null
+  const league = group && group !== '80' ? leagueInfo(sport, group) : null
+  const members = league ? await conferenceMembers(sport, league).catch(() => null) : null
+  if (league && !members) return null
+  const rows = Object.entries(def.player)
+    .map(([id, [v, teamId, name, position]]) => ({ id, v, teamId, name, position }))
+    .filter((r) => !members || members.has({ id: r.teamId }))
+    .sort((a, b) => b.v - a.v)
+  const leaders = rows.slice(0, 10).map((r) => {
+    const rank = rows.findIndex((x) => x.v === r.v) + 1
+    const [abbr, name, color] = def.teams[r.teamId] ?? []
+    return {
+      rank,
+      id: r.id,
+      name: r.name,
+      jersey: def.jersey[r.id] ?? '',
+      position: r.position,
+      headshot: `https://a.espncdn.com/i/headshots/college-football/players/full/${r.id}.png`,
+      value: String(r.v),
+      team: r.teamId ? statTeam({ id: r.teamId, abbreviation: abbr, shortDisplayName: name, color }) : null,
+    }
+  })
+  return leaders.length ? { name: 'tacklesForLoss', label: LEADER_LABELS.tacklesForLoss, abbr: 'TFL', leaders } : null
+}
 
 function leaderValue(cat, l) {
   if (PCT_CATS.has(cat) && l.value != null) return `${(l.value * 100).toFixed(1)}%`
@@ -1390,6 +1462,7 @@ export async function fetchLeaders(sport, group) {
     season -= 1
     raw = await getJSON(q(season))
   }
+  const [tfl, def] = sport.byWeek ? await Promise.all([tflLeaders(sport, season, group), fetchDefenseData()]) : []
   const cats = Object.fromEntries(
     (raw.leaders?.categories ?? []).map((c) => [
       c.name,
@@ -1401,7 +1474,7 @@ export async function fetchLeaders(sport, group) {
           rank: i + 1,
           id: l.athlete?.id,
           name: l.athlete?.displayName ?? '',
-          jersey: l.athlete?.jersey ?? '',
+          jersey: l.athlete?.jersey ?? def?.jersey[l.athlete?.id] ?? '',
           position: l.athlete?.position?.abbreviation ?? '',
           headshot: l.athlete?.headshot?.href ?? null,
           value: leaderValue(c.name, l),
@@ -1418,6 +1491,7 @@ export async function fetchLeaders(sport, group) {
       },
     ]),
   )
+  if (tfl) cats.tacklesForLoss = tfl
   return {
     season,
     label: sport.path.startsWith('basketball/') ? `${season - 1}–${String(season).slice(2)}` : String(season),
@@ -1508,9 +1582,10 @@ export async function fetchPlayerStats(sport, { sort, category, limit = 200, qua
   const url = (s) =>
     `${WEB}/${sport.path}/statistics/byathlete?${STATS_Q}&isqualified=${qualified}&page=1&limit=${limit}` +
     `&sort=${sort}:desc&season=${s}${g ? `&group=${g}` : ''}${category ? `&category=${category}` : ''}`
-  const [{ raw, season }, d1] = await Promise.all([
+  const [{ raw, season }, d1, def] = await Promise.all([
     seasonFeed(sport, url, (r) => r.athletes?.length > 0),
     sport.byWeek ? null : d1TeamIds(sport),
+    sport.byWeek ? fetchDefenseData() : null,
   ])
   const idx = statIndex(raw.categories)
   const rows = (raw.athletes ?? []).map((row) => {
@@ -1529,7 +1604,8 @@ export async function fetchPlayerStats(sport, { sort, category, limit = 200, qua
       id: a.id,
       name: a.displayName ?? '',
       position: a.position?.abbreviation ?? '',
-      jersey: a.jersey ?? '',
+      // The stats feed leaves jersey numbers out; football's come from the rosters at deploy time.
+      jersey: a.jersey ?? def?.jersey[a.id] ?? '',
       headshot: a.headshot?.href ?? null,
       team: statTeam({ ...t, id: t.id ?? a.teamId, logos: t.logos ?? a.teamLogos }),
       stats,
@@ -1550,9 +1626,10 @@ export async function fetchTeamStats(sport) {
     `${WEB}/${sport.path}/statistics/byteam?${STATS_Q}&page=${page}&limit=${basketball ? 400 : 200}&season=${s}${
       basketball ? '&group=50' : ''
     }`
-  const [{ raw, season }, d1] = await Promise.all([
+  const [{ raw, season }, d1, def] = await Promise.all([
     seasonFeed(sport, url(1), (r) => r.teams?.length > 0),
     basketball ? d1TeamIds(sport) : null,
+    basketball ? null : fetchDefenseData(),
   ])
   let teams = raw.teams ?? []
   if ((raw.pagination?.pages ?? 1) > 1) {
@@ -1576,6 +1653,15 @@ export async function fetchTeamStats(sport) {
         if (d == null || d === '-') continue
         stats[`${side}.${cat.name}.${n}`] = { v: cat.values?.[i] ?? toNum(d), d }
       }
+    }
+    // ESPN's team feed has no defensive numbers: team tackles for loss are
+    // summed from every player's TFL at deploy time.
+    const tfl = def?.season === season ? (def.tfl[row.team?.id] ?? 0) : null
+    if (tfl != null) {
+      const fmt = (n) => String(Math.round(n * 10) / 10)
+      stats['own.defensive.tacklesForLoss'] = { v: tfl, d: fmt(tfl) }
+      const gp = stats['own.general.gamesPlayed']?.v
+      if (gp) stats['own.defensive.tacklesForLossPerGame'] = { v: tfl / gp, d: (tfl / gp).toFixed(1) }
     }
     return { team: statTeam(row.team), stats }
   })

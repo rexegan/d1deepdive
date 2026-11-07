@@ -371,6 +371,7 @@ function BoxScore({ g, onPlayer }) {
                 {c.rows.map((r) => (
                   <tr key={r.id ?? r.name}>
                     <td className="left">
+                      {r.jersey && <span className="muted tiny gd-jersey">#{r.jersey}</span>}
                       <button className="team-link" onClick={() => onPlayer({ id: r.id, name: r.name, jersey: r.jersey })}>
                         {r.name}
                       </button>
