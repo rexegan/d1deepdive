@@ -242,10 +242,11 @@ export const SPORTS = [
   },
 ]
 
-// Every league picker starts with Yesterday's Upsets.
+// Every league picker starts with upsets: the weekend's for football (it plays
+// Friday to Sunday), yesterday's for the daily sports.
 for (const s of SPORTS) {
   if (!s.leagues) continue
-  s.leagues.unshift({ id: 'upsets', label: "Yesterday's Upsets", section: '' })
+  s.leagues.unshift({ id: 'upsets', label: s.byWeek ? 'Weekend Upsets' : "Yesterday's Upsets", section: '' })
   s.quickLeagues.unshift('upsets')
 }
 

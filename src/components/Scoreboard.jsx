@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { conferenceMembers, fetchScoreboard, fromKey, isUpset, leagueInfo, shiftKey, toKey, todayKey } from '../api.js'
+import { conferenceMembers, fetchScoreboard, fromKey, isUpset, leagueInfo, shiftKey, todayKey } from '../api.js'
 import { buildHash, useData, useFavorites } from '../hooks.js'
 import GameCard from './GameCard.jsx'
 import { EditTeamsButton } from './MyTeamsEditor.jsx'
@@ -23,22 +23,52 @@ function dayLabel(key) {
   return fromKey(key).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-// Yesterday's completed games where the winner was ranked lower. Football
-// rarely plays on a given weekday, so with no games yesterday it falls back to
-// the most recent game day this week.
+/**
+ * The most recent Friday to Sunday: this weekend while it's on (Fri, Sat or
+ * Sun), otherwise last weekend. Returns the three date keys.
+ */
+function weekendKeys(today = todayKey()) {
+  const dow = fromKey(today).getDay() // 0 Sun ... 5 Fri, 6 Sat
+  const back = dow === 0 ? 2 : dow >= 5 ? dow - 5 : dow + 2
+  const fri = shiftKey(today, -back)
+  return [fri, shiftKey(fri, 1), shiftKey(fri, 2)]
+}
+
+const upsetResult = (board, events, extra) => ({
+  ...board,
+  ...extra,
+  played: events.filter((g) => g.state === 'post').length,
+  events: events.filter(isUpset).sort((a, b) => new Date(a.date) - new Date(b.date)),
+})
+
+// Football: every D1 (FBS and FCS) upset from the most recent Friday, Saturday
+// and Sunday. Other sports: yesterday's completed games where the winner was
+// ranked lower.
 async function loadUpsets(sport, division, o) {
-  const yesterday = shiftKey(todayKey(), -1)
-  let board = await fetchScoreboard(sport, { date: yesterday, division }, o)
-  let day = yesterday
-  if (sport.byWeek && !board.events.some((g) => g.state === 'post')) {
-    const week = await fetchScoreboard(sport, { division }, o)
-    const done = week.events.filter((g) => g.state === 'post')
-    if (done.length) {
-      day = done.map((g) => toKey(new Date(g.date))).sort().at(-1)
-      board = { ...week, events: done.filter((g) => toKey(new Date(g.date)) === day) }
-    }
+  if (sport.byWeek) {
+    const days = weekendKeys()
+    const groups = sport.divisions.map((d) => d.id)
+    const boards = await Promise.all(
+      days.flatMap((date) => groups.map((g) => fetchScoreboard(sport, { date, division: g }, o))),
+    )
+    const seen = new Set()
+    const events = boards
+      .flatMap((b) => b.events)
+      .filter((g) => !seen.has(g.id) && seen.add(g.id))
+    return upsetResult(boards[0], events, { weekend: days })
   }
-  return { ...board, upsetDay: day, played: board.events.filter((g) => g.state === 'post').length, events: board.events.filter(isUpset) }
+  const yesterday = shiftKey(todayKey(), -1)
+  const board = await fetchScoreboard(sport, { date: yesterday, division }, o)
+  return upsetResult(board, board.events, { upsetDay: yesterday })
+}
+
+function weekendLabel([fri, , sun]) {
+  const f = fromKey(fri)
+  const s = fromKey(sun)
+  const md = (d, opts) => d.toLocaleDateString([], opts)
+  return f.getMonth() === s.getMonth()
+    ? `${md(f, { month: 'short', day: 'numeric' })}–${s.getDate()}`
+    : `${md(f, { month: 'short', day: 'numeric' })} – ${md(s, { month: 'short', day: 'numeric' })}`
 }
 
 export default function Scoreboard({ sport, params }) {
@@ -213,15 +243,15 @@ export default function Scoreboard({ sport, params }) {
       {loading && <Loading label="Loading games…" />}
       {error && !data && <ErrorBox error={error} onRetry={refresh} />}
 
-      {upsets && data?.upsetDay && data.played > 0 && (
+      {upsets && data && data.played > 0 && (
         <p className="muted upset-head">
-          {data.upsetDay === shiftKey(todayKey(), -1) ? 'Yesterday' : `No games yesterday, so showing ${dayLabel(data.upsetDay)}`}
-          : {data.events.length} upset{data.events.length === 1 ? '' : 's'} in {data.played} final{data.played === 1 ? '' : 's'}. An
-          upset is a win over a higher-ranked team.
+          {data.weekend ? `Weekend of ${weekendLabel(data.weekend)}` : 'Yesterday'}: {data.events.length} upset
+          {data.events.length === 1 ? '' : 's'} in {data.played} final{data.played === 1 ? '' : 's'}
+          {data.weekend ? ' across FBS and FCS' : ''}. An upset is a win over a higher-ranked team.
         </p>
       )}
 
-      {data?.upsetDay && !data.events.length && upsets && data.played > 0 && (
+      {upsets && data && !data.events.length && data.played > 0 && (
         <div className="state">
           <p>No upsets. The favorites held serve.</p>
         </div>
@@ -229,7 +259,7 @@ export default function Scoreboard({ sport, params }) {
 
       {data && !data.events.length && !(upsets && data.played > 0) && (
         <div className="state">
-          <p>No {sport.name.toLowerCase()} games {upsets ? 'yesterday' : sport.byWeek ? 'this week' : `on ${dayLabel(date).toLowerCase()}`}.</p>
+          <p>No {sport.name.toLowerCase()} games {upsets ? (data.weekend ? 'this weekend' : 'yesterday') : sport.byWeek ? 'this week' : `on ${dayLabel(date).toLowerCase()}`}.</p>
           {data.seasonStart && new Date(data.seasonStart) > new Date() && (
             <p className="muted">
               Season starts {new Date(data.seasonStart).toLocaleDateString([], { month: 'long', day: 'numeric' })}.
