@@ -3,6 +3,8 @@ import { fetchRecords, fetchSeasonRecords, fetchTeam, schoolSiteUrl, seasonLabel
 import Roster, { PlayerView } from './Roster.jsx'
 import FunFacts from './FunFacts.jsx'
 import Coaches from './Coaches.jsx'
+import History from './History.jsx'
+import { historyFor } from '../data/schoolHistory.js'
 import { useData, useFavorites } from '../hooks.js'
 import { closeTeam, isTopPanel, openGame, useOpenTeam } from '../team.js'
 import TeamLogo from './TeamLogo.jsx'
@@ -166,6 +168,7 @@ function Body({ sport, open }) {
   const overall = team.records.find((r) => r.type === 'total') ?? team.records[0]
   const scoring = sport.id === 'cfb' || sport.id.endsWith('bb') ? 'Points' : 'Runs'
   const fav = isFav(sport.id, team.id)
+  const history = historyFor(team)
 
   return (
     <>
@@ -233,6 +236,7 @@ function Body({ sport, open }) {
           ['roster', 'Roster'],
           ['facts', 'Fun Facts'],
           ['coaches', 'Coaching Staff'],
+          ...(history ? [['history', 'History']] : []),
         ].map(([id, label]) => (
           <button
             key={id}
@@ -250,6 +254,8 @@ function Body({ sport, open }) {
         <FunFacts sport={sport} team={team} />
       ) : tab === 'coaches' ? (
         <Coaches sport={sport} team={team} />
+      ) : tab === 'history' && history ? (
+        <History history={history} />
       ) : (
         <>
       {team.limited && (
